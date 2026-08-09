@@ -42,6 +42,44 @@ a bundle; this page groups them by the question they answer.
 - **App extensions and helpers** — every embedded extension, XPC service, and
   helper binary, each analysed rather than counted.
 
+### Requested, granted, used
+
+Declaring an interest is only the first of three questions, and the Static tab
+crosses all three in one table — *Permissions: requested vs granted vs used*.
+
+| Axis | Where it comes from |
+|---|---|
+| **Requested** | Info.plist usage keys and the entitlements that declare them — the bullet above |
+| **Granted** | What macOS has actually recorded, read from the system's TCC databases |
+| **Used** | What a [monitored run](/monitored-runs) observed. Camera, microphone and screen recording only; everything else reads `—` |
+
+The gaps are the point. A capability requested and granted but never touched
+across a run you drove properly is worth a question; one macOS has granted that
+the app never declared a reason for is worth a larger one.
+
+<Note>
+  **The granted column needs Full Disk Access — privacycommand's own, not the
+  inspected app's.** macOS protects the TCC databases, so a copy of
+  privacycommand without FDA can't read them. It doesn't guess: the column
+  reads `unknown` and the table shows a card with a button into the right
+  System Settings pane. Grant it and reopen the app.
+
+  This is a TCC grant, not root — the [helper](/privileged-helper) is a separate
+  thing and won't help here. Four things go missing without FDA, all of them in
+  this table: the granted column; any row that exists *only* because macOS
+  recorded a grant — including the granted-but-never-declared case above, which
+  has no row at all when the grant can't be read; the *System access granted*
+  list below the table, which is where the inspected app's own Full Disk Access,
+  Accessibility, Screen Recording or Input Monitoring grants would appear; and
+  the **Verdict** column, which collapses to *Grant unknown* on every row.
+
+  That last one costs more than it looks. *Used in binary, not declared* — a
+  warning that needs no TCC data at all, since it comes from the binary — is
+  computed after the unknown-grant check and never reached, so the warning and
+  the row ordering that surfaces it both disappear. The rest of the static
+  report is unaffected.
+</Note>
+
 ## Content — what does it ship?
 
 - **SDK fingerprints** — analytics, advertising, and attribution SDKs matched
@@ -87,11 +125,30 @@ This is a deliberate contract: **a new detector is not complete without its
 Knowledge Base entry.** If you're adding one, see
 [Contributing](/develop/contributing).
 
-## Underlying commands
+## Showing your work
 
-Every finding shows the command behind it — `codesign`, `otool`, `plutil`,
-`sfltool`, `lsof`, `mdls` — copyable in one click, so you can reproduce any
-result outside privacycommand or paste it into a ticket.
+Fourteen of the risk contributors carry a **show source** button — the
+magnifying glass next to the row on the risk-score breakdown. It opens a
+popover naming where that evidence actually came from.
+
+For the signing-related ones that's a command you can re-run yourself:
+
+```bash
+codesign -dvv /Applications/SomeApp.app
+codesign -d --entitlements :- /Applications/SomeApp.app
+spctl --assess -vvv /Applications/SomeApp.app
+```
+
+For the rest it's a location rather than a command — `Contents/Info.plist`,
+`Contents/MacOS/<executable>`, or the Files or Network tab for anything a
+monitored run produced. The popover text is selectable, and where there's a
+file behind it, **Reveal in Finder** takes you there. Contributors outside those
+fourteen have no button — for those, the Knowledge Base entry above is the
+explanation.
+
+The Executive Summary rows have a one-click copy, but what it copies is a
+Markdown summary of the finding — severity, message, evidence, Knowledge Base
+id — not a command.
 
 ## Next
 

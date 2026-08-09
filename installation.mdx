@@ -50,13 +50,21 @@ the first build — the full walkthrough is in
 
 ## First launch
 
-privacycommand opens to an empty inspector. Drop a `.app` bundle or a `.dmg`
-onto the window and the [first audit](/first-audit) begins immediately — no
-account, no sign-in, no configuration.
+The first launch opens a five-step wizard rather than the inspector: welcome,
+static analysis, network monitoring, file monitoring, and a closing step. It's
+explanatory — no account, no sign-in — and **Skip onboarding** at the bottom
+left jumps straight past it. You only see it once; after that privacycommand
+opens to an empty inspector. **Help → Show Onboarding…** replays it, as does
+**Settings → General → Onboarding → Replay**.
 
-The [privileged helper](/privileged-helper) is **not** installed at this point.
-You'll be asked for it the first time you try something that needs it, and the
-static report never does.
+The fourth step, *File monitoring (optional)*, is where the
+[privileged helper](/privileged-helper) comes up. It shows the helper's current
+status and offers to install it — so you are asked about it during first launch,
+not only the first time you reach for a feature that needs it. Skipping the step
+installs nothing, and the static report never needs it.
+
+Past the wizard, drop a `.app` bundle or a `.dmg` onto the window and the
+[first audit](/first-audit) begins immediately.
 
 ## Verifying what you installed
 

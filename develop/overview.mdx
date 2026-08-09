@@ -10,15 +10,22 @@ a privileged helper, a CLI, and an agent that runs inside a VM.
 
 | Target | Path | Role |
 |---|---|---|
-| `privacycommandCore` | `Sources/privacycommandCore/` | The analyzer. AppKit-free, so it runs from the CLI, the tests, the GUI and the helper without dragging UI dependencies along |
+| `privacycommandCore` | `Sources/privacycommandCore/` | The analyzer. No SwiftUI and no window, so it runs from the CLI, the tests, the GUI and the helper alike |
 | `privacycommand` | `Sources/privacycommand/` | The SwiftUI app — views and view-models only |
 | `privacycommandHelper` | the `privacycommandHelper` directory | Privileged XPC service, installed via `SMAppService.daemon` |
 | `privacycommandGuestProtocol` | `Sources/privacycommandGuestProtocol/` | Wire format shared by host and guest. Zero dependencies, so the agent builds without compiling Core |
 | `privacycommandGuestAgent` | `Sources/privacycommandGuestAgent/` | The `privacycommand-guest` daemon that runs inside a VM |
 | `auditctl` / `auditctlKit` | `Sources/auditctl*/` | The [CLI](/auditctl), and the smallest end-to-end exercise of the analyzer |
 
-The split is deliberate. Core stays AppKit-free so a change to the analyzer can
-be tested with `swift test` in seconds rather than by launching a GUI.
+The split is deliberate: a change to the analyzer can be tested with
+`swift test` in seconds rather than by launching a GUI.
+
+The whole *analysis* half of Core has no UI dependency at all. Three files under
+`Monitoring/` do import AppKit behind `#if canImport(AppKit)` — `DynamicMonitor`
+launches the inspected bundle via `NSWorkspace`, `LiveProbeMonitor` polls
+`NSPasteboard.general.changeCount`, and `VMHostDetection` drives the VM
+front-ends. Those are on the dynamic path and can't do their jobs without it.
+If you're adding a detector under `Analysis/`, keep it free of both.
 
 <Note>
   There is a second, stale copy of the helper sources under

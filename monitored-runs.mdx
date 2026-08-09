@@ -43,6 +43,30 @@ launch screen will barely touch anything.
   until minutes in.
 - **Then check what changed at rest.** Some apps only phone home on quit.
 
+## Watch mode
+
+Some behaviour won't show up in the ten minutes you're prepared to sit there:
+licence-server pings, telemetry that batches on a timer, a scheduled update
+check, a phone-home the day a trial expires. Watch mode is a monitored run you
+leave running.
+
+Start it from **Run → Start Watching…** (⇧⌘W) or the eye button in the header —
+either one starts a run first if there isn't one already. Then:
+
+- **A menu-bar icon appears** with an unread badge. A change detector diffs each
+  tick of the run against the previous one and posts a single entry per
+  genuinely new thing: a destination not contacted before, a new behavioural
+  anomaly, an event the risk classifier called surprising, a live-probe event, a
+  CPU spike. Clicking the icon opens the list and marks it read.
+- **Closing the main window does not quit privacycommand.** This is the part
+  worth knowing in advance — while watching, the app deliberately stays alive
+  with the menu-bar icon as your only handle on it. **Stop Watching** — ⇧⌘W
+  again, or the header button — ends the watch and the run together.
+- The icon style is yours to pick under **Settings → General**.
+
+Everything else is an ordinary monitored run, with the same requirements — file
+events still need the helper.
+
 ## Pausing the target
 
 You can freeze the inspected app and its child processes mid-run, then resume

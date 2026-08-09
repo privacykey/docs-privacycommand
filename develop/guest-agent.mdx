@@ -20,8 +20,9 @@ There is no second copy of the GUI inside the VM.
 
 ## The protocol
 
-The host connects to the agent over TCP and exchanges two message types defined
-in `privacycommandGuestProtocol`:
+The host connects to the agent over TCP — port 49374 unless the agent was
+started with `--port` — and exchanges two message types defined in
+`privacycommandGuestProtocol`:
 
 - **`GuestCommand`** — host to guest: start a run, decompile, stop.
 - **`GuestObservation`** — guest to host: the events a monitored run produces.
@@ -34,7 +35,7 @@ the thing to look at first if host and guest disagree.
 
 Beyond monitored runs, the agent can decompile an entire app inside the guest
 and stream the reconstructed classes back
-(**Settings → VM → Decompile in VM**).
+(**Settings → VM agent → Decompile in VM**).
 
 This offloads Ghidra's CPU-heavy analysis onto the VM, so it never runs on your
 real Mac. It needs Ghidra installed **in the guest**, not on the host.

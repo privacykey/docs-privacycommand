@@ -29,6 +29,23 @@ description: "The failures people actually hit, and what to do about each."
     Expected unless the app came from the Mac App Store. Direct downloads and
     Homebrew casks have no labels to fetch. See [Privacy labels](/privacy-labels).
   </Accordion>
+  <Accordion title="Every permission grant reads unknown" icon="lock">
+    privacycommand couldn't read the TCC databases, which is where the
+    *granted* axis of the permission matrix comes from. macOS protects them, so
+    privacycommand itself needs **Full Disk Access** to open them.
+
+    The matrix shows a card with a button straight into the right System
+    Settings pane. Grant it and reopen privacycommand.
+
+    Four things go missing, all of them in the permission matrix: the granted
+    column, any row that exists only because macOS recorded a grant, the
+    *System access granted* list that flags the inspected app's own Full Disk
+    Access, Accessibility, Screen Recording or Input Monitoring, and the
+    **Verdict** column — every row reads *Grant unknown*, which also suppresses
+    the *Used in binary, not declared* warning even though that one needs no TCC
+    data. The rest of the static report is unaffected. See
+    [Requested, granted, used](/static-analysis#requested-granted-used).
+  </Accordion>
 </AccordionGroup>
 
 <a id="the-helper" />
@@ -43,6 +60,16 @@ description: "The failures people actually hit, and what to do about each."
 
     For a release build, this usually means a damaged or partially quarantined
     install. Reinstall from a fresh download.
+  </Accordion>
+  <Accordion title="A source build connects, but the team check never fires" icon="shield">
+    Expected, and worth knowing about. A helper with no Team Identifier —
+    unsigned, ad-hoc signed, or Xcode's "Sign to Run Locally" — accepts every
+    connecting process rather than refusing them. It logs
+    `No Team ID — accepting connection (dev mode)`; check with
+    `log show --predicate 'process == "privacycommandHelper"' --last 5m`.
+
+    Set a signing team on the helper target to get the real check back. See
+    [How it protects itself](/privileged-helper#how-it-protects-itself).
   </Accordion>
   <Accordion title="Connected, but no file events" icon="folder">
     `fs_usage` produces nothing for a process it can't observe. Confirm the run
@@ -76,6 +103,28 @@ description: "The failures people actually hit, and what to do about each."
     Blocking is by address. An app that re-resolves a hostname to a different IP
     can escape it. For a hard boundary, take the guest offline in
     [VM mode](/vm-mode).
+  </Accordion>
+</AccordionGroup>
+
+## auditctl
+
+<AccordionGroup>
+  <Accordion title="preview says Homebrew was not found" icon="terminal">
+    `auditctl preview` looks for `brew` at `$HOMEBREW_PREFIX/bin/brew` first, if
+    that variable is set, then `/opt/homebrew/bin/brew` and
+    `/usr/local/bin/brew`. A Homebrew installed somewhere else is invisible to
+    it unless you point the variable at the prefix:
+
+    ```bash
+    HOMEBREW_PREFIX="$(brew --prefix)" swift run -c release auditctl preview
+    ```
+
+    Or skip brew entirely with `preview --all-apps`, which reads
+    `/Applications` and `~/Applications` directly.
+  </Accordion>
+  <Accordion title="Colour codes in a log file or CI transcript" icon="terminal">
+    Pass `--no-color`, or set `NO_COLOR` in the environment — `auditctl` honours
+    both. See [auditctl](/auditctl).
   </Accordion>
 </AccordionGroup>
 
