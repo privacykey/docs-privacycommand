@@ -1,0 +1,51 @@
+---
+title: Privacy labels
+description: "The developer's declared App Store labels, set against what the binary actually contains."
+---
+
+When a bundle was installed from the Mac App Store, privacycommand fetches the
+developer's declared **Privacy Nutrition Labels** from Apple and shows them
+beside its own static-analysis findings.
+
+The point is the comparison. A label is a *claim*; the binary is *evidence*.
+Putting them side by side lets you see whether they agree.
+
+## How the lookup works
+
+privacycommand resolves the bundle identifier against Apple's public endpoints
+and reads the same privacy disclosures shown on the app's App Store page.
+
+<Note>
+  The request is keyed on the **inspected app's bundle ID** and nothing else.
+  No information about you, your machine, or your other apps is included. See
+  [Security](/security) for the full list of outbound calls.
+</Note>
+
+## What to look for
+
+- **A declared category with no supporting evidence.** Not suspicious on its
+  own — developers over-declare to be safe.
+- **Binary evidence with no matching declaration.** More interesting. If the
+  bundle fingerprints an advertising SDK and the labels claim no data is
+  collected for advertising, that gap is worth understanding.
+- **Third-party SDKs the labels don't account for.** Labels cover the
+  developer's own collection *and* what their SDKs do. An unaccounted-for
+  analytics SDK is a real discrepancy.
+
+## Limits
+
+**Only Mac App Store apps have labels.** Direct downloads and Homebrew casks
+have nothing to fetch, and the card simply won't appear.
+
+**Labels are self-reported.** Apple does not verify them. That is precisely why
+this comparison is worth making — but it also means a mismatch points at a
+disclosure problem, not proof of misbehaviour.
+
+**A match isn't a clean bill of health.** Labels describe categories, not
+volumes, destinations, or retention.
+
+## Related
+
+privacycommand's sibling [privacytracker](https://github.com/privacykey/privacytracker)
+does the same job for **iOS** apps, and tracks label changes over time so you're
+told when an app quietly starts collecting more.

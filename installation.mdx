@@ -1,0 +1,73 @@
+---
+title: Installation
+description: "Homebrew, a signed DMG, or a build from source — and which update channel each one uses."
+---
+
+macOS 13 or newer, Apple Silicon or Intel. privacycommand is free and MIT-licensed.
+
+## Homebrew
+
+The recommended route.
+
+```bash
+brew install privacykey/tap/privacycommand
+```
+
+The tap lives at [privacykey/homebrew-tap](https://github.com/privacykey/homebrew-tap).
+Keep it current with:
+
+```bash
+brew upgrade --cask privacycommand
+```
+
+<Note>
+  When privacycommand detects it's running from a Homebrew Caskroom it disables
+  its own in-app updater, so `brew` stays the single source of truth for the
+  on-disk version. You won't get two updaters fighting.
+</Note>
+
+## Direct download
+
+Grab the signed and notarized `.dmg` from
+[the latest release](https://github.com/privacykey/privacycommand/releases/latest)
+and drag the app into `/Applications`.
+
+Direct installs update through [Sparkle 2](https://sparkle-project.org).
+Automatic checks are **off by default** — opt in under **Settings → Updates**.
+See [Updating](/updating) for how the appcast is signed and verified.
+
+## Build from source
+
+```bash
+git clone https://github.com/privacykey/privacycommand.git
+cd privacycommand/privacycommand
+open privacycommand.xcodeproj
+```
+
+You'll need to add the Sparkle package dependency and set a signing team before
+the first build — the full walkthrough is in
+[Build from source](/develop/build-from-source).
+
+## First launch
+
+privacycommand opens to an empty inspector. Drop a `.app` bundle or a `.dmg`
+onto the window and the [first audit](/first-audit) begins immediately — no
+account, no sign-in, no configuration.
+
+The [privileged helper](/privileged-helper) is **not** installed at this point.
+You'll be asked for it the first time you try something that needs it, and the
+static report never does.
+
+## Verifying what you installed
+
+privacycommand audits macOS apps, so it's fair to point it at itself:
+
+```bash
+codesign -dv --verbose=4 /Applications/privacycommand.app
+spctl --assess --type execute -vv /Applications/privacycommand.app
+```
+
+You can also drop `privacycommand.app` onto its own window. It ships zero
+analytics SDKs, so the [telemetry callout](/telemetry) should come back empty —
+if it doesn't, something is wrong and we'd like to hear about it via
+[Security](/security).

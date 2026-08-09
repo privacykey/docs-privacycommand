@@ -1,0 +1,70 @@
+---
+title: VM mode
+description: "Run the analysis inside a disposable macOS VM, and ship the observations back to your Mac."
+---
+
+For a bundle you genuinely don't trust, running it on your own machine is the
+wrong move — even under observation. VM mode moves the execution into a
+disposable macOS guest and streams the results back.
+
+## The shape of it
+
+privacycommand ships a **guest agent** into a macOS VM. The agent runs the same
+observation work inside the guest and sends what it sees back to the host across
+the VM boundary, using a small zero-dependency wire protocol shared by both
+sides.
+
+Your Mac ends up with the report. The guest is what actually ran the app, and
+you can throw it away afterwards.
+
+Tested against [VirtualBuddy](https://github.com/insidegui/VirtualBuddy),
+[UTM](https://mac.getutm.app), and Parallels.
+
+## When to use it
+
+- **Anything you'd hesitate to double-click.** Unsigned bundles, things from a
+  download aggregator, a `.dmg` a stranger sent you.
+- **Software that fights inspection.** If static analysis flagged anti-analysis
+  signals, assume it may behave differently when it thinks it's being watched —
+  and note that some of those checks specifically look for VMs, so a guest can
+  change behaviour too.
+- **Anything that installs persistence.** Login items, agents, and daemons land
+  in the guest rather than on your Mac, and vanish with the snapshot.
+
+## Setting it up
+
+You need a macOS VM you can install into. The broad shape:
+
+<Steps>
+  <Step title="Build a guest and snapshot it clean">
+    Install macOS in your VM tool of choice and take a snapshot before anything
+    else touches it. That snapshot is what makes runs disposable.
+  </Step>
+  <Step title="Install the guest agent">
+    Copy the agent into the guest and start it. It waits for a host session.
+  </Step>
+  <Step title="Connect from the host">
+    privacycommand discovers the guest session and drives the run from your Mac.
+  </Step>
+  <Step title="Revert when you're done">
+    Roll the guest back to the clean snapshot. Anything the app installed goes
+    with it.
+  </Step>
+</Steps>
+
+The protocol and the agent's internals are documented under
+[Guest agent](/develop/guest-agent).
+
+## Limits worth knowing
+
+**VM detection is common.** Plenty of software — DRM especially — behaves
+differently in a guest. A clean run in a VM is not proof of a clean run on
+bare metal.
+
+**Apple Silicon guests run Apple Silicon macOS.** You can't audit an Intel-only
+build in an ARM guest without Rosetta in the picture, which changes what you're
+observing.
+
+**Performance costs coverage.** Guests are slower, and a slow run tends to be a
+shorter run, which means fewer exercised code paths. Give it longer than you
+would on the host.

@@ -1,0 +1,62 @@
+---
+title: Guest agent
+description: "The daemon behind VM mode — two binaries on two machines."
+---
+
+[VM mode](/vm-mode) is **two binaries on two machines**, not two copies of the
+app.
+
+| Machine | Binary | UI | Role |
+|---|---|---|---|
+| Host | `privacycommand` | Yes | The app you're using. Where results appear |
+| Guest | `privacycommand-guest` | No | A small TCP daemon. Takes commands, ships observations |
+
+You install `privacycommand-guest` inside the VM once. After that you keep
+using privacycommand on your real Mac exactly as before — same window, same
+tabs. Observations from the guest stream into those tabs with a **VM** badge so
+you can tell them apart from anything running on the host.
+
+There is no second copy of the GUI inside the VM.
+
+## The protocol
+
+The host connects to the agent over TCP and exchanges two message types defined
+in `privacycommandGuestProtocol`:
+
+- **`GuestCommand`** — host to guest: start a run, decompile, stop.
+- **`GuestObservation`** — guest to host: the events a monitored run produces.
+
+That target has **zero dependencies** deliberately, so the agent compiles
+without pulling in Core. It's the contract between the two machines, and it's
+the thing to look at first if host and guest disagree.
+
+## Decompiling in the guest
+
+Beyond monitored runs, the agent can decompile an entire app inside the guest
+and stream the reconstructed classes back
+(**Settings → VM → Decompile in VM**).
+
+This offloads Ghidra's CPU-heavy analysis onto the VM, so it never runs on your
+real Mac. It needs Ghidra installed **in the guest**, not on the host.
+
+For a large binary this is the difference between your Mac being unusable for
+ten minutes and not noticing at all.
+
+## Practical notes
+
+**The guest needs to be reachable.** The host connects over TCP, so the VM's
+networking has to allow it. Bridged or shared networking generally works;
+fully isolated networking by definition does not — and if you've taken the
+guest offline deliberately to contain an app, you've also cut the agent's link.
+
+**Snapshot before you run anything.** The value of VM mode is that the guest is
+disposable. A clean snapshot taken before the first audit is what makes that
+true.
+
+**VM detection is real.** Software that looks for a hypervisor may behave
+differently, and privacycommand's own
+[anti-analysis detector](/static-analysis) will often tell you in advance that
+a bundle contains those checks.
+
+The repo's `docs/GUEST_AGENT.md` carries the full protocol detail and setup
+steps.

@@ -1,0 +1,56 @@
+---
+title: Telemetry callout
+description: "How many analytics, advertising, and attribution SDKs a bundle ships — and what fingerprinted each one."
+---
+
+The Dashboard carries a telemetry card: a heat-graded count of analytics,
+advertising, and attribution SDKs found in the bundle, broken down by category.
+
+## How detection works
+
+privacycommand matches the bundle against an SDK fingerprint database. A
+fingerprint is a set of strings, symbols, framework names, and bundled resources
+characteristic of a particular SDK.
+
+Every detection is **traceable**: hover any SDK and you see the matched strings
+that produced it. There is no opaque score — if privacycommand claims Firebase
+is present, it will show you what it found.
+
+Detected families include LaunchDarkly, Firebase, Mixpanel, AdMob, AppsFlyer,
+Amplitude, Segment, Sentry, PostHog, Statsig, Optimizely and Unleash, among
+others.
+
+## Reading the count
+
+The number matters less than the mix, and the mix matters less than whether it
+matches the business model.
+
+| Pattern | Reading |
+|---|---|
+| Crash reporting only | Ordinary. Almost every app ships something here. |
+| Analytics + crash | Normal for commercial software. |
+| Attribution SDKs present | The app wants to know which ad you came from. Expected in a free consumer app, odd in a paid utility. |
+| Advertising SDKs present | The app is, or has been, ad-supported. |
+| Several overlapping in one category | Often an artefact — a vendored dependency dragging its own analytics in. Worth understanding rather than alarming. |
+
+<Note>
+  **Presence is not proof of transmission.** An SDK can be linked and never
+  initialised, or gated behind a consent flow that never fires. The callout
+  tells you what shipped. To find out whether it phones home, do a
+  [monitored run](/monitored-runs) and watch the destinations.
+</Note>
+
+## Feature flags and trial state
+
+Alongside the SDK count, privacycommand extracts the flag names the binary
+checks at runtime — `isPro`, `isTrial`, `subscription_status`, `experiment_id`,
+and the vendor-specific equivalents.
+
+This is useful for a reason that isn't really about privacy: it shows you which
+behaviours the vendor can change remotely, without shipping an update.
+
+## A note on our own numbers
+
+privacycommand ships **zero** analytics SDKs. Drop `privacycommand.app` onto its
+own window and the callout should come back empty. If it ever doesn't, that is
+a bug worth reporting — see [Security](/security).

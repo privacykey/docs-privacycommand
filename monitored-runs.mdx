@@ -1,0 +1,64 @@
+---
+title: Monitored runs
+description: "Launch the inspected app under observation and watch what it actually touches."
+---
+
+Static analysis shows capability. A monitored run shows behaviour.
+
+privacycommand launches the inspected app and streams what it does in real time:
+
+| Stream | What you see |
+|---|---|
+| **File events** | Reads and writes, via `fs_usage` through the [helper](/privileged-helper) |
+| **Network** | Destinations with reverse-DNS labels, click-through IP lookups, row highlighting, and a highlighted-only filter |
+| **Processes** | Child processes the app spawns |
+| **Device access** | Pasteboard, camera, microphone, and screen-recording activity |
+| **USB** | Device interactions |
+| **Resources** | CPU, memory, and disk over the life of the run |
+
+A heat-graded callout fires when something spikes — a burst of disk writes, a
+fresh outbound host, a CPU climb that wasn't there a moment ago.
+
+## What you need
+
+File-event monitoring requires the [privileged helper](/privileged-helper),
+because `fs_usage` needs root. The other streams do not.
+
+<Warning>
+  **A monitored run executes the app.** If you have real doubts about a bundle,
+  do this inside [VM mode](/vm-mode) instead, where the blast radius is a
+  disposable guest rather than your Mac.
+</Warning>
+
+## Getting useful coverage
+
+Dynamic analysis only sees the code paths you exercise. An app sitting on its
+launch screen will barely touch anything.
+
+- **Drive the features you care about.** If you want to know whether the export
+  function uploads anything, run an export.
+- **Watch the first thirty seconds.** Analytics and attribution SDKs typically
+  fire their first beacon at startup.
+- **Let it idle afterwards.** Some telemetry batches on a timer and won't appear
+  until minutes in.
+- **Then check what changed at rest.** Some apps only phone home on quit.
+
+## Pausing the target
+
+You can freeze the inspected app and its child processes mid-run, then resume
+them. That's ordinary process suspension — useful for reading a fast-scrolling
+event list without losing the run.
+
+It stops the app from doing anything further, but it does **not** sever
+connections already open. For that, see the
+[network kill switch](/kill-switch).
+
+## Reading the network tab
+
+Destinations are reverse-DNS labelled, so `142.250.80.14` shows up as something
+recognisable rather than a bare address. Rows can be highlighted and then
+filtered to highlighted-only, which is the practical way to work through a busy
+run: mark the interesting destinations as you go, then review just those.
+
+Bear in mind that a reverse lookup shows the *hosting* party. A connection to a
+cloud provider's address tells you the provider, not necessarily who rented it.

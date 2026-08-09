@@ -1,0 +1,14 @@
+{
+  "name": "privacycommand-docs",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes mint dev",
+    "check": "node scripts/check-docs.mjs",
+    "linkcheck": "lychee --base . './**/*.mdx' './**/*.md'"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

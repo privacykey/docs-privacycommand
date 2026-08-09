@@ -1,0 +1,57 @@
+---
+title: Background tasks
+description: "Every login item, launch agent, daemon, and helper an app registered to start without you."
+---
+
+An app you opened once can keep running forever. The Background Task Management
+audit lists everything a bundle registered to start on its own:
+
+- **Login items** — launched when you log in.
+- **Launch agents** — run in your user session, on a schedule or a trigger.
+- **Launch daemons** — run as root, before anybody logs in.
+- **Helper tools and XPC services** — embedded binaries the app can start.
+
+## How it's collected
+
+privacycommand reads this through the [privileged helper](/privileged-helper),
+which runs `sfltool dumpBTM` on your behalf.
+
+<Note>
+  Doing this through the helper means **no admin prompt mid-audit**. Without the
+  helper installed, privacycommand asks before triggering the prompt itself,
+  so the audit is never the thing that surprises you with an authentication
+  dialog.
+</Note>
+
+## What to look for
+
+**Daemons over agents.** A launch *daemon* runs as root and starts before login.
+The bar for one should be high — a bundled updater or a VPN helper is
+reasonable; a note-taking app is not.
+
+**Items with no visible feature behind them.** If an app registered three helpers
+and you can only account for one, that's the question to chase.
+
+**Persistence that outlives the app.** Login items and launch agents commonly
+survive dragging the app to the Trash. This audit is often the fastest way to
+find leftovers from software you removed months ago.
+
+**Helpers signed by someone else.** Every embedded binary is analysed too, so
+check the signing identity matches the app's.
+
+## Acting on it
+
+privacycommand reports; it doesn't remove things. It shows the identifier and
+the command behind each entry, so you can inspect or unload it yourself:
+
+```bash
+# Inspect what is registered
+sfltool dumpBTM
+
+# Look at a specific agent
+launchctl print gui/$(id -u)/com.example.helper
+```
+
+Removing persistence properly means the vendor's own uninstaller, or unloading
+the job and deleting its plist — which is deliberately outside what a read-only
+forensic tool will do for you.

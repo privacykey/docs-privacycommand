@@ -1,0 +1,93 @@
+---
+title: Build from source
+description: "Two build paths, and the one signing step you can't skip."
+---
+
+Two parallel paths over the same sources. Xcode builds the GUI; SwiftPM gives
+you a fast loop on the analyzer.
+
+## Xcode — the app
+
+```bash
+git clone https://github.com/privacykey/privacycommand.git
+cd privacycommand/privacycommand
+open privacycommand.xcodeproj
+```
+
+Then, before the first build:
+
+<Steps>
+  <Step title="Add the Sparkle dependency">
+    **File → Add Package Dependencies…** →
+    `https://github.com/sparkle-project/Sparkle`, *Up to Next Major* from
+    `2.9.0`. Tick the `Sparkle` product on the **privacycommand** target.
+  </Step>
+  <Step title="Set the app's signing team">
+    **privacycommand → Signing & Capabilities → Team.** A personal team is fine
+    for development; distribution needs a Developer ID.
+  </Step>
+  <Step title="Match the helper's team to the app's">
+    **privacycommandHelper → Signing & Capabilities → Team**, set to the *same*
+    team.
+
+    This is not optional. The helper's `CodeSignValidator` requires an Apple
+    anchor plus a Team ID matching its own, so a mismatch means the XPC
+    connection is refused at runtime and every privileged feature fails.
+  </Step>
+  <Step title="Build">
+    ⌘B to build, ⌘R to run, ⌘U for the app test bundle.
+  </Step>
+</Steps>
+
+The app target depends on the helper, so building the app builds the helper
+first and embeds it, along with its LaunchDaemon plist.
+
+App Sandbox is off, Hardened Runtime is on, deployment target is macOS 13.0,
+and distribution is Developer ID plus notarization rather than the App Store.
+
+## SwiftPM — the analyzer and CLI
+
+```bash
+cd privacycommand
+swift build
+swift test
+.build/debug/auditctl /System/Applications/Calculator.app
+```
+
+This builds `privacycommandCore` and [`auditctl`](/auditctl). **The SwiftUI app
+is not built this way** — it exists only in the Xcode project.
+
+Use this loop when you're working on detectors. It's much faster than a GUI
+build, and `auditctl` against a known-good system app is the quickest way to
+see whether a change did what you meant.
+
+## How one source tree compiles both ways
+
+App sources use a conditional import:
+
+```swift
+import SwiftUI
+#if SWIFT_PACKAGE
+import privacycommandCore
+#endif
+```
+
+Under SwiftPM, `SWIFT_PACKAGE` is defined and Core is a separate module. Under
+Xcode, everything is one app module and the import is skipped. Test files do the
+same with `@testable import`.
+
+If you add a file that references Core, keep this pattern or the other build
+path breaks.
+
+## Verifying the build
+
+```bash
+APP=$(find ~/Library/Developer/Xcode/DerivedData -path '*Build/Products*/privacycommand.app' -maxdepth 7 -print -quit)
+ls -1 "$APP/Contents/MacOS"
+# privacycommand
+# privacycommandHelper      <- the helper is embedded
+ls -1 "$APP/Contents/Library/LaunchDaemons"
+```
+
+If `privacycommandHelper` is missing from `Contents/MacOS`, the embed phase
+didn't run and nothing privileged will work.

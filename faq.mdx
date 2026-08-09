@@ -1,0 +1,58 @@
+---
+title: FAQ
+description: "Short answers to the questions that come up first."
+---
+
+<AccordionGroup>
+  <Accordion title="Do I need to give it admin access?" icon="shield">
+    Not for the core report. Static analysis, the App Store privacy-label
+    cross-check, batch scan and exports all run unprivileged.
+
+    The optional [helper](/privileged-helper) unlocks live file-event
+    monitoring, the Background Task Management audit without a mid-audit
+    prompt, and the network kill switch. Installing it asks for admin once.
+  </Accordion>
+  <Accordion title="Does it run the app I'm inspecting?" icon="play">
+    Not unless you ask it to. The first pass is entirely static. Executing the
+    app only happens in a [monitored run](/monitored-runs), which you start
+    deliberately — and for anything you don't trust, do it in
+    [VM mode](/vm-mode).
+  </Accordion>
+  <Accordion title="Does it detect malware?" icon="bug">
+    No, and it doesn't claim to. It reports what a bundle is entitled to, what
+    it ships, and what it does when observed. A determined adversary can hide
+    from static analysis. Use it as evidence, not as a verdict.
+  </Accordion>
+  <Accordion title="Is anything sent anywhere?" icon="wifi">
+    Three narrow calls: DNS reverse lookups for addresses the inspected app
+    contacted, Mac App Store privacy-label lookups keyed on the inspected app's
+    bundle ID, and the Sparkle appcast when you check for updates — which is off
+    by default. Full detail in [Security](/security).
+  </Accordion>
+  <Accordion title="Can I audit an app I haven't installed?" icon="download">
+    Yes. Drop a `.dmg` on it, or use
+    [`auditctl preview --fetch`](/auditctl) to pull an incoming Homebrew cask
+    build and diff it against what you have.
+  </Accordion>
+  <Accordion title="Why does an app show findings after an update to privacycommand?" icon="refresh">
+    Usually because detection improved, not because the app changed. Detectors
+    are added between releases. If you're tracking an app over time, note which
+    privacycommand version produced each report — see [Updating](/updating).
+  </Accordion>
+  <Accordion title="Is it free? Is there a paid tier?" icon="tag">
+    Free, MIT-licensed, no paid tier and no upsell.
+  </Accordion>
+  <Accordion title="Does it work on Intel Macs?" icon="cpu">
+    Yes — macOS 13 or newer, Apple Silicon or Intel.
+  </Accordion>
+  <Accordion title="Can I run it in CI?" icon="terminal">
+    Yes, via [`auditctl`](/auditctl). Use `--json` for machine-readable output
+    and `--warn-exit` to fail a build on findings. Run bare with stdout
+    redirected it prints usage rather than opening the interactive browser, so
+    it's safe in a pipeline.
+  </Accordion>
+  <Accordion title="What about iOS apps?" icon="mobile">
+    Different tool — [privacytracker](https://github.com/privacykey/privacytracker)
+    watches iOS App Store privacy labels and tells you when they change.
+  </Accordion>
+</AccordionGroup>

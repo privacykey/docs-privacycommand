@@ -1,0 +1,90 @@
+---
+title: Troubleshooting
+description: "The failures people actually hit, and what to do about each."
+---
+
+## Analysis
+
+<AccordionGroup>
+  <Accordion title="A .dmg won't analyse" icon="disc">
+    privacycommand mounts the image, analyses the app inside, and unmounts it.
+    That fails if the image needs a licence agreement accepted, is encrypted, or
+    contains a `.pkg` installer rather than an app bundle.
+
+    Mount it yourself, drag the `.app` out, and analyse that directly.
+  </Accordion>
+  <Accordion title="The binary summary is nearly empty" icon="code">
+    Most likely a stripped release build — symbol names carry much of the
+    readability in the [call-sites map](/binary-and-network). You'll still get
+    entitlements, signing, SDK fingerprints and strings.
+
+    Electron and other runtime-hosted apps are also thin here: the interesting
+    code is JavaScript inside an asar archive, not the Mach-O.
+  </Accordion>
+  <Accordion title="Decompilation is unavailable" icon="wrench">
+    Ghidra isn't installed, or privacycommand can't find it. It is optional and
+    not bundled — everything else works without it.
+  </Accordion>
+  <Accordion title="No privacy labels appear" icon="file-text">
+    Expected unless the app came from the Mac App Store. Direct downloads and
+    Homebrew casks have no labels to fetch. See [Privacy labels](/privacy-labels).
+  </Accordion>
+</AccordionGroup>
+
+<a id="the-helper" />
+
+## The helper
+
+<AccordionGroup>
+  <Accordion title="Installation is refused or immediately fails" icon="shield">
+    If you built from source, the helper's signing team must match the app's —
+    `CodeSignValidator` rejects the XPC connection otherwise. Check both targets
+    in **Signing & Capabilities**.
+
+    For a release build, this usually means a damaged or partially quarantined
+    install. Reinstall from a fresh download.
+  </Accordion>
+  <Accordion title="Connected, but no file events" icon="folder">
+    `fs_usage` produces nothing for a process it can't observe. Confirm the run
+    actually launched the app and that the target isn't a launcher stub that
+    exits after spawning the real binary elsewhere.
+  </Accordion>
+  <Accordion title="The helper survived uninstalling the app" icon="trash">
+    Reinstall privacycommand, uninstall the helper from within it, then remove
+    the app. Verify with:
+
+    ```bash
+    sudo launchctl print system/org.privacykey.privacycommand.HelperTool
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Network
+
+<AccordionGroup>
+  <Accordion title="The kill switch won't arm" icon="power">
+    It needs the helper installed, and it needs destinations to block — the list
+    is built from traffic already captured in this run. Let the app talk to
+    something first.
+  </Accordion>
+  <Accordion title="Something unrelated lost connectivity" icon="wifi">
+    The kill switch is a **system-wide** `pf` rule, not per-process. If the
+    inspected app shares a host or CDN with something else, that is blocked too.
+    Disarm it. See [Network kill switch](/kill-switch).
+  </Accordion>
+  <Accordion title="The app routed around the block" icon="arrow-right">
+    Blocking is by address. An app that re-resolves a hostname to a different IP
+    can escape it. For a hard boundary, take the guest offline in
+    [VM mode](/vm-mode).
+  </Accordion>
+</AccordionGroup>
+
+## Filing a useful issue
+
+Include the privacycommand version, your macOS version and architecture,
+whether the helper is installed, and — if you can share it — the
+[JSON export](/reports). Open it at
+[github.com/privacykey/privacycommand/issues](https://github.com/privacykey/privacycommand/issues).
+
+For anything security-sensitive, don't use a public issue — see
+[Security](/security).

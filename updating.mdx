@@ -1,0 +1,51 @@
+---
+title: Updating
+description: "Two channels sharing one DMG, and why they never fight."
+---
+
+privacycommand updates through two channels that ship the same DMG.
+
+## Homebrew
+
+```bash
+brew upgrade --cask privacycommand
+```
+
+When privacycommand detects it's running from a Homebrew Caskroom, it
+**disables its own installer**. `brew` stays authoritative for the on-disk
+version, and you never get two updaters disagreeing about what's installed.
+
+## Sparkle
+
+Direct downloads update in-app via [Sparkle 2](https://sparkle-project.org).
+
+**Automatic checks are off by default.** Opt in under **Settings → Updates**.
+A privacy tool that phones a server on a timer without asking would be a poor
+advertisement for itself, so it asks.
+
+The appcast is published at
+`https://privacykey.github.io/privacycommand/appcast.xml` and **signed with
+EdDSA**. Sparkle verifies the signature before applying anything, so a tampered
+or substituted response can't push an update.
+
+## What an update can change
+
+privacycommand is pre-1.0 and says so in its own README. Between releases,
+expect:
+
+- **New and changed detectors.** Findings can appear on an app that previously
+  showed none — usually because detection improved, not because the app changed.
+- **Report-format shifts.** The JSON export shape is not yet stable.
+
+<Note>
+  If you keep audits as a record over time, export [JSON](/reports) and store it
+  with the app version and audit date. A finding that appears after an update is
+  otherwise indistinguishable from a change in the app itself — and
+  [Compare runs](/compare-runs) is only meaningful when you know which
+  privacycommand version produced each side.
+</Note>
+
+## Checking your version
+
+The version is in **privacycommand → About**. When filing an issue, include it
+along with your macOS version and whether the helper is installed.

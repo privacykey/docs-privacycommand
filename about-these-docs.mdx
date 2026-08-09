@@ -1,0 +1,50 @@
+---
+title: About these docs
+description: "How this site is written, where it can be wrong, and how to fix it."
+---
+
+## Where this comes from
+
+These pages were written against the privacycommand source at `main` — the
+detectors under `Sources/privacycommandCore/Analysis/`, the helper's XPC
+interface, the `auditctl` command surface, and the project's in-repo
+`ARCHITECTURE.md`, `HELPER.md`, `BUILDING.md` and `GUEST_AGENT.md`.
+
+Where a page describes behaviour, it was checked in the code rather than
+inferred from the README.
+
+## Where it can be wrong
+
+privacycommand is **pre-1.0 and moving**. Detectors get added, the report format
+shifts, and UI labels change. These docs will drift between releases.
+
+Two specific cautions:
+
+- **Screenshots and exact labels** age fastest. Trust the described behaviour
+  over the wording of any button.
+- **The JSON export shape is not stable.** Don't build anything long-lived on it
+  without pinning a version.
+
+If a page contradicts the app, the app is right and the page is a bug.
+
+## Fixing something
+
+Small corrections: use **Suggest edits** at the bottom of any page.
+
+Anything larger, or if you're unsure: open an issue at
+[github.com/privacykey/privacycommand/issues](https://github.com/privacykey/privacycommand/issues)
+and say which page and what's wrong.
+
+If a page makes a claim about the **security posture** that isn't true — the
+outbound calls, what the helper can do, what the kill switch touches — that's
+not a docs typo, it's a security issue. Please follow
+[Security](/security) and don't open a public issue.
+
+## Conventions
+
+- **privacycommand** is one word, all lowercase, including at the start of a
+  sentence. So is **privacykey**.
+- Commands are shown as you'd type them.
+- Where a feature is optional, the page says so and says what you lose without
+  it. Nothing here should imply you need the helper, Ghidra, or a VM to get
+  value from the tool.

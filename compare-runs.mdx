@@ -1,0 +1,58 @@
+---
+title: Compare runs
+description: "Diff two saved reports, or an update against the version you already have."
+---
+
+A single report tells you what an app is today. The interesting question is
+usually what changed.
+
+privacycommand compares in two directions.
+
+## Compare an update before it lands
+
+Drop in a candidate update and diff it against the version currently on disk.
+For Sparkle-distributed apps, privacycommand can read the appcast itself and
+pull the next release straight into the inspector — so the audit happens before
+the live app's own updater ever sees it.
+
+This is the highest-value comparison the tool does: an app you already trusted
+is exactly the one whose new version deserves a look.
+
+## Compare any two saved reports
+
+The **History** tab keeps your previous runs. Pick any two and diff them
+side by side. Added and removed items are colour-cued across:
+
+- entitlements
+- hard-coded domains
+- SDK fingerprints
+- login items and launch agents
+- findings
+
+A **show-only-changes** toggle collapses everything identical, which is what
+makes a large diff readable.
+
+## Reading a diff well
+
+**New entitlements are the headline.** An app that has quietly gained Full Disk
+Access or a hardened-runtime exception has changed what it can do, regardless of
+what the release notes say.
+
+**New domains are the second thing.** Especially third-party ones — that is
+often a new SDK arriving.
+
+**Removals matter too.** An SDK disappearing is usually good news, but a
+*capability* disappearing can mean functionality moved somewhere less visible.
+
+**Version churn is noise.** Build identifiers, timestamps, and resource hashes
+change on every release. Focus on the categories above.
+
+## From the command line
+
+```bash
+swift run -c release auditctl preview --fetch <cask>
+```
+
+does the same before-and-after against an incoming Homebrew cask build — see
+[auditctl](/auditctl), including the note about Gatekeeper and freshly
+downloaded artifacts.

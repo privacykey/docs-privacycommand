@@ -1,0 +1,49 @@
+---
+title: Exporting reports
+description: "JSON, HTML, and PDF — which format to reach for."
+---
+
+Every audit exports three ways.
+
+| Format | Shape | Reach for it when |
+|---|---|---|
+| **JSON** | Every detector's raw output | You're feeding another tool, diffing programmatically, or keeping an archive that outlives the UI |
+| **HTML** | Reads like an IT vendor-review one-pager | You're sending it to somebody who won't install privacycommand |
+| **PDF** | Same layout, fixed | It's going into a ticket, a procurement pack, or a compliance file |
+
+## JSON
+
+The complete output — nothing is summarised away. This is the format to keep if
+you're building a record over time, because a future version of privacycommand
+can read an old export even if the UI has moved on.
+
+It's also what you want for scripting. [`auditctl --json`](/auditctl) produces
+the same shape headlessly, so a scheduled job and a manual audit are directly
+comparable.
+
+## HTML and PDF
+
+Both are laid out as a vendor-review one-pager: the summary and risk tier first,
+then the findings with their plain-English explanations, then the detail.
+
+The audience is someone deciding whether to approve an app, not someone
+debugging it. If your reader is technical and wants everything, send the JSON.
+
+## What's in an export
+
+Exports carry the findings, the signals behind them, and the Knowledge Base
+explanations — so the document stands on its own without privacycommand
+installed.
+
+<Note>
+  A report describes **one bundle at one version at one moment**. Include the
+  app version and the audit date whenever you file one; a report about
+  "SomeApp" with no version attached ages badly and misleads later.
+</Note>
+
+## A caution on sharing
+
+A report can contain hard-coded hostnames, internal domains, secret *names* (not
+values), and file paths from your machine. Before attaching one to a public
+issue or a vendor email, read it — particularly the strings and paths sections —
+the same way you would any diagnostic bundle.

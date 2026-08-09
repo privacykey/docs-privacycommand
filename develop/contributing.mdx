@@ -1,0 +1,54 @@
+---
+title: Contributing
+description: "The one contract that matters, plus what to run before opening a PR."
+---
+
+Issues and pull requests are welcome.
+
+## Before you open a PR
+
+- **Run the tests.** `swift test` from `privacycommand/`, and confirm they pass.
+- **For UI changes, attach a before/after screenshot.**
+- **For a new analysis signal, add its Knowledge Base entry.** See below.
+
+## The Knowledge Base contract
+
+This is the one convention that isn't negotiable.
+
+privacycommand explains what every finding means in plain English. A raw
+entitlement key or a matched string is not a finding — it becomes one when a
+reader who isn't a macOS internals specialist can tell what it implies.
+
+So **a new detector is not complete without a Knowledge Base entry alongside
+it.** The entry should say what the signal is, why an app might legitimately
+have it, and what would make it concerning.
+
+That last part matters. Most signals are dual-use: anti-analysis checks are
+common in DRM, a launch daemon is reasonable for a VPN client. An entry that
+only says "this is bad" makes the report worse, not better.
+
+## Writing a detector
+
+Detectors live in `Sources/privacycommandCore/Analysis/`. Keep them in Core —
+AppKit-free — so they stay testable from `swift test` and usable from
+[`auditctl`](/auditctl).
+
+Useful habits:
+
+- **Prefer evidence over inference.** Report what was found and where. Let the
+  behaviour pass combine signals into findings.
+- **Make it traceable.** Every detection should be able to show what matched.
+  The [telemetry callout](/telemetry) shows the matched strings behind every
+  SDK, and new detectors should meet the same bar.
+- **Test against a real bundle.** `auditctl` against a system app is the fastest
+  check that a detector behaves on real input.
+
+## Docs
+
+These docs live in
+[privacykey/docs-privacycommand](https://github.com/privacykey/docs-privacycommand).
+If your change alters user-visible behaviour, the docs change belongs with it.
+
+## Security
+
+Don't open a public issue for a vulnerability — see [Security](/security).

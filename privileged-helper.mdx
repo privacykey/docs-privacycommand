@@ -1,0 +1,66 @@
+---
+title: The privileged helper
+description: "What it does, what it deliberately can't do, and how to remove it."
+---
+
+Some of what privacycommand does needs root. Rather than asking you to run the
+whole app as root, it ships a small privileged helper and keeps its API surface
+deliberately tiny.
+
+## What needs it
+
+| Capability | Why root |
+|---|---|
+| File-event monitoring | `fs_usage` requires elevated privileges |
+| [Background Task Management audit](/background-tasks) | `sfltool dumpBTM` — through the helper this avoids an admin prompt mid-audit |
+| [Network kill switch](/kill-switch) | Installing a `pf` anchor needs `pfctl` |
+
+Everything else — the whole static report, App Store privacy labels, the
+telemetry callout, batch scan, exports — runs unprivileged. **The helper is
+opt-in and privacycommand is useful without it.**
+
+## How it's installed
+
+The helper is embedded in the app bundle and registered as a daemon through
+`SMAppService`. You're asked once; after that it stays out of your way.
+
+## How it protects itself
+
+The helper **validates its clients by code signature on connect**. It requires
+an Apple anchor and a Team ID matching its own, so a binary not signed by the
+same team cannot talk to it — even running as your user.
+
+<Note>
+  This matters if you build from source. The helper's signing team must match
+  the app's, or the XPC connection is refused. See
+  [Build from source](/develop/build-from-source).
+</Note>
+
+## What it will not do
+
+The helper exposes a handful of operations and nothing else: report its version,
+start and stop the file monitor, run the BTM dump, install and remove the kill
+switch, and uninstall itself.
+
+There is no general "run this command as root" path. That's the point of a
+narrow helper rather than a privileged app.
+
+## Removing it
+
+privacycommand can uninstall the helper itself — it exposes an uninstall
+operation for exactly this. Use that in preference to deleting files by hand.
+
+To confirm it's gone:
+
+```bash
+sudo launchctl print system/org.privacykey.privacycommand.HelperTool
+```
+
+A "could not find service" response is what you want. If you removed
+privacycommand without uninstalling the helper first, reinstall the app, remove
+the helper properly, then remove the app.
+
+## If it misbehaves
+
+Symptoms and where to look are collected in
+[Troubleshooting](/troubleshooting#the-helper).

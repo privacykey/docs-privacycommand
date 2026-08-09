@@ -1,0 +1,100 @@
+---
+title: Architecture
+description: "The targets, why each is separate, and how data moves between them."
+---
+
+One line: **a SwiftUI app drops a bundle onto a pure-Swift analyzer, optionally
+launches the inspected app under a privileged XPC helper for dynamic monitoring,
+and optionally ships a guest agent into a macOS VM to do the same work in
+isolation.**
+
+## The picture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        privacycommand.app                        │
+│  ┌────────────────────┐    ┌────────────────────┐                │
+│  │  privacycommand    │    │ privacycommandCore │  pure Swift,   │
+│  │  (SwiftUI + AppKit)│───▶│    (analyzer)      │  no AppKit     │
+│  └─────────┬──────────┘    └────────────────────┘                │
+│            │ XPC                     ▲ analyze(bundleAt:)        │
+│            ▼                         │                           │
+│  ┌──────────────────────┐            │                           │
+│  │ privacycommandHelper │  root: fs_usage, sfltool, pfctl.       │
+│  │ (SMAppService daemon)│  Validates clients by Team ID.         │
+│  └──────────────────────┘                                        │
+└──────────────────────────────────────────────────────────────────┘
+
+     ┌──────────────────────┐   ┌──────────────────────────┐
+     │ auditctl (CLI)       │   │ privacycommandGuestAgent │
+     │ smallest end-to-end  │   │ runs in a macOS VM,      │
+     │ run of the analyzer  │   │ ships observations back  │
+     └──────────┬───────────┘   └────────────┬─────────────┘
+                │                            │
+                └── privacycommandGuestProtocol ──┘
+                        (zero-dep wire format)
+```
+
+## Why each target is separate
+
+**`privacycommandCore` is AppKit-free on purpose.** It runs from the CLI, from
+tests, from the GUI, and from the helper. Keeping UI dependencies out means a
+detector change is testable in seconds with `swift test`, and that the same
+analysis code runs everywhere rather than being reimplemented per surface.
+
+**The helper is tiny on purpose.** It exposes only what genuinely needs root:
+version, start/stop file monitor, the BTM dump, install/remove kill switch,
+uninstall. No general run-as-root path. It validates callers by code signature —
+Apple anchor plus matching Team ID — so a binary signed by anyone else can't
+talk to it.
+
+**The guest protocol has zero dependencies on purpose.** The agent has to build
+and run inside a VM without compiling Core, so the wire format lives in its own
+target that both sides import.
+
+**`auditctl` exists partly as a test.** It's the smallest path that exercises
+the analyzer end to end, which makes it the fastest way to notice you broke
+something.
+
+## How an audit flows
+
+<Steps>
+  <Step title="Ingest">
+    A `.app` — or a `.dmg`, mounted and unmounted around the analysis — becomes
+    a bundle path.
+  </Step>
+  <Step title="Static pass">
+    Roughly forty detectors under `Analysis/` run over the bundle: signing,
+    entitlements, Mach-O inspection, string scanning, SDK fingerprinting,
+    Privacy Manifest reading, and the rest. Each emits signals.
+  </Step>
+  <Step title="Classification">
+    A behaviour pass turns combinations of signals into findings with a risk
+    tier. This is what drives the summary and the [batch scan](/batch-scan)
+    table.
+  </Step>
+  <Step title="Enrichment">
+    Optional and network-bound: App Store privacy labels for Mac App Store
+    bundles.
+  </Step>
+  <Step title="Dynamic pass (optional)">
+    The app is launched under observation. `Monitoring/` collects file events
+    (via the helper), network destinations, processes, device access, USB, and
+    resource usage — or receives the same from a VM guest.
+  </Step>
+  <Step title="Report">
+    Persisted to History, and exportable as JSON, HTML or PDF.
+  </Step>
+</Steps>
+
+## Reading the source
+
+- `Sources/privacycommandCore/Analysis/` — the detectors, roughly forty files
+- `Sources/privacycommandCore/Monitoring/` — dynamic observation
+- `Sources/privacycommandCore/Classification/` — signals to findings
+- `Sources/privacycommandCore/KnowledgeBase/` — the plain-English explanations
+- `Sources/privacycommandCore/IPC/` — the helper's XPC protocol
+- `Sources/privacycommandCore/Batch/` — fleet scanning
+- `Sources/privacycommandCore/Reporting/` — exports
+
+The repo's own `ARCHITECTURE.md` carries the longer version.

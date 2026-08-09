@@ -1,0 +1,105 @@
+---
+title: Static analysis
+description: "What privacycommand extracts from a bundle without running it — the bulk of the report."
+---
+
+Static analysis reads the bundle on disk. Nothing executes, so this is the part
+you can safely run against something you don't trust at all.
+
+It is also where most of the report comes from. Roughly forty detectors run over
+a bundle; this page groups them by the question they answer.
+
+## Identity — is this what it says it is?
+
+<AccordionGroup>
+  <Accordion title="Code signing" icon="signature">
+    Full chain validation: Developer ID, the signing Team ID, hardened-runtime
+    flags, and the `spctl` assessment. The 10-character Team ID is expanded to
+    the developer's registered name, so `A1B2C3D4E5` becomes a company you can
+    recognise.
+  </Accordion>
+  <Accordion title="Notarization" icon="stamp">
+    A deep dive rather than a yes/no: whether the ticket is stapled, what
+    `spctl` says about it, and the SHA-256 of the bundle. Every relaxation is
+    reported with the entitlement or flag responsible.
+  </Accordion>
+  <Accordion title="Provenance" icon="tag">
+    Where the bundle came from — quarantine attributes, Mac App Store receipt
+    if present, and the update mechanism the app carries (Sparkle, its own
+    updater, or none).
+  </Accordion>
+</AccordionGroup>
+
+## Capability — what is it allowed to do?
+
+- **Entitlements** — the full list, with the sandbox and hardened-runtime
+  exceptions called out rather than buried.
+- **TCC** — which privacy-protected resources the app declares an interest in,
+  and the usage-description strings it will show you when it asks.
+- **Privacy Manifest** — Apple's declared manifest, **cross-checked against what
+  the binary actually links**. A manifest that omits an API the binary calls is
+  more interesting than either fact alone.
+- **App extensions and helpers** — every embedded extension, XPC service, and
+  helper binary, each analysed rather than counted.
+
+## Content — what does it ship?
+
+- **SDK fingerprints** — analytics, advertising, and attribution SDKs matched
+  against a fingerprint database. See [Telemetry](/telemetry).
+- **Hard-coded domains and URLs** — hosts sitting in the binary and in bundled
+  resources.
+- **URL schemes and document types** — what the app registers to handle, which
+  is also what other apps can use to poke it.
+- **Frameworks and rpaths** — what it links, where it looks, and whether the
+  search paths widen the [dylib hijacking](#dylib-hijacking-surface) surface.
+- **Embedded assets and resources** — including scripts and databases shipped
+  inside the bundle.
+- **Secrets and licence keys** — names of credential-shaped strings. It reports
+  that a key-shaped thing exists and what it appears to be for; it does not
+  print the value.
+- **Feature flags and trial state** — `isPro`, `isTrial`, `subscription_status`,
+  `experiment_id`, and the platform-specific switches behind them (LaunchDarkly,
+  Optimizely, Firebase Remote Config, PostHog, Statsig, Unleash).
+
+## Risk — what should worry you?
+
+**Anti-analysis signals.** Checks a binary can make to notice it's being
+inspected — debugger detection, VM detection, integrity checks. Present in
+plenty of legitimate DRM, so this is a signal rather than a verdict.
+
+<a id="dylib-hijacking-surface" />
+
+**Dylib hijacking surface.** Where a writable or under-specified library search
+path would let an attacker land code inside the app's process.
+
+**Behaviour analysis.** The detectors above produce signals; a behaviour pass
+turns combinations of them into findings with a risk tier, which is what drives
+the summary and the [batch scan](/batch-scan) triage table.
+
+## Every finding is explained
+
+privacycommand ships a Knowledge Base entry alongside each detector. When a
+finding says the app has `com.apple.security.cs.disable-library-validation`,
+you get a plain-English explanation of what that entitlement relaxes and why an
+app might legitimately want it — not just the raw key.
+
+This is a deliberate contract: **a new detector is not complete without its
+Knowledge Base entry.** If you're adding one, see
+[Contributing](/develop/contributing).
+
+## Underlying commands
+
+Every finding shows the command behind it — `codesign`, `otool`, `plutil`,
+`sfltool`, `lsof`, `mdls` — copyable in one click, so you can reproduce any
+result outside privacycommand or paste it into a ticket.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="The binary summary" icon="code" href="/binary-and-network">
+    Network call sites, and decompiling them.
+  </Card>
+  <Card title="Privacy labels" icon="file-text" href="/privacy-labels">
+    Developer claims against binary contents.
+  </Card>
+</CardGroup>

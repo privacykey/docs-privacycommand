@@ -1,0 +1,66 @@
+---
+title: Introduction
+description: "What privacycommand tells you about a macOS app, and what it deliberately doesn't."
+---
+
+macOS will tell you what an app is *allowed* to do. Open System Settings and
+you'll see which apps hold Camera, Microphone, Full Disk Access. What it won't
+tell you is what any of them actually *does* with that permission — or what a
+bundle carries that never asks permission at all.
+
+privacycommand closes that gap. Drop a `.app` bundle (or a `.dmg`) onto it and
+it produces a forensic report: what the binary is entitled to, which analytics
+SDKs it ships, which domains are hard-coded in it, what it registered to launch
+at login — and, if you let it, what it reaches for while it runs.
+
+<Note>
+  **Everything runs locally.** The inspected app's contents never leave your
+  machine. privacycommand makes exactly three kinds of outbound call, all
+  narrow and all described in [Security](/security).
+</Note>
+
+## The two halves
+
+**Static analysis** happens without running anything. It's safe on a bundle you
+don't trust, it's fast, and it's the bulk of the report — entitlements,
+code-signing and notarization, URL schemes, embedded helpers, SDK fingerprints,
+hard-coded hosts, Apple's Privacy Manifest checked against what the binary
+actually links. Start at [Static analysis](/static-analysis).
+
+**Dynamic analysis** means launching the app under observation and watching
+what it does: file events, network destinations, child processes, pasteboard
+and camera and microphone access. That needs the
+[privileged helper](/privileged-helper), and for anything you genuinely don't
+trust, it should happen inside [VM mode](/vm-mode).
+
+## What it won't do
+
+privacycommand reports. It doesn't remediate, quarantine, or score apps against
+a compliance framework, and it makes no claim to detect malware — a determined
+adversary can hide from static analysis, and dynamic analysis only sees the code
+paths you happen to exercise.
+
+A clean report means "nothing in the signals we extract looked noteworthy". It
+does not mean the app is safe.
+
+## Where to start
+
+<CardGroup cols={2}>
+  <Card title="Install it" icon="download" href="/installation">
+    Homebrew, a signed DMG, or from source.
+  </Card>
+  <Card title="Run your first audit" icon="play" href="/first-audit">
+    Drop a bundle in and read what comes back.
+  </Card>
+  <Card title="Audit a whole fleet" icon="grid" href="/batch-scan">
+    Triage every app in `/Applications` at once.
+  </Card>
+  <Card title="Script it" icon="terminal" href="/auditctl">
+    `auditctl`, the CLI over the same analyzer.
+  </Card>
+</CardGroup>
+
+## Requirements
+
+macOS 13 or newer, Apple Silicon or Intel. The privileged helper and VM mode are
+optional — the core report works without either.

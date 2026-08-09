@@ -1,0 +1,62 @@
+---
+title: Network kill switch
+description: "Cut the inspected app's outbound traffic system-wide, and watch how it copes."
+---
+
+During a [monitored run](/monitored-runs) you can block the destinations the
+inspected app has been contacting, then watch what it does about it.
+
+This is a genuinely useful test. An app that degrades gracefully when its
+analytics endpoint disappears behaves very differently from one that blocks the
+UI, retries in a tight loop, or refuses to start.
+
+## How it works
+
+privacycommand collects every IP address the app has contacted so far in the
+run, then asks the [privileged helper](/privileged-helper) to install a `pf`
+anchor that drops outbound traffic to that set.
+
+The helper:
+
+1. Writes an anchor file under `/etc/pf.anchors/`.
+2. Adds a reference to it in `/etc/pf.conf`, keeping a copy of the original.
+3. Reloads the ruleset with `pfctl -f /etc/pf.conf` and enables `pf` if needed.
+4. Populates the blocked-address table.
+
+Removing the kill switch flushes the anchor and rolls `/etc/pf.conf` back to
+the copy it saved.
+
+<Warning>
+  This is a **system-wide** packet-filter rule, not a per-process one. It blocks
+  those addresses for your whole Mac while it is armed. If the inspected app
+  shares a CDN or a cloud host with something you care about, that something is
+  blocked too.
+</Warning>
+
+## Requirements and caveats
+
+**The helper must be installed.** Without it there's no privileged path to
+`pfctl`, and privacycommand will tell you so.
+
+**You need captured traffic first.** The block list is built from destinations
+observed during the run. Arm it before the app has contacted anything and there
+is nothing to block — let the run gather traffic first.
+
+**It blocks addresses, not names.** An app that re-resolves a hostname to a
+different IP can route around it. For a hard boundary, take the whole guest
+offline in [VM mode](/vm-mode).
+
+**Always lift it when you're done.** The anchor persists until removed.
+privacycommand restores the original `pf.conf` on removal, but if the app is
+force-quit mid-run, check the switch is disarmed before you wonder why something
+else can't reach the internet.
+
+## Verifying by hand
+
+```bash
+sudo pfctl -s info
+sudo pfctl -s Anchors
+```
+
+If you ever need to clear state manually, flushing the anchor and reloading the
+system ruleset is the same pair of commands the helper uses.

@@ -1,0 +1,46 @@
+---
+title: Developing privacycommand
+description: "Where the code lives, and the shape of a contribution."
+---
+
+privacycommand is Swift: a SwiftUI app over a pure-Swift analyzer library, plus
+a privileged helper, a CLI, and an agent that runs inside a VM.
+
+## The layout
+
+| Target | Path | Role |
+|---|---|---|
+| `privacycommandCore` | `Sources/privacycommandCore/` | The analyzer. AppKit-free, so it runs from the CLI, the tests, the GUI and the helper without dragging UI dependencies along |
+| `privacycommand` | `Sources/privacycommand/` | The SwiftUI app — views and view-models only |
+| `privacycommandHelper` | the `privacycommandHelper` directory | Privileged XPC service, installed via `SMAppService.daemon` |
+| `privacycommandGuestProtocol` | `Sources/privacycommandGuestProtocol/` | Wire format shared by host and guest. Zero dependencies, so the agent builds without compiling Core |
+| `privacycommandGuestAgent` | `Sources/privacycommandGuestAgent/` | The `privacycommand-guest` daemon that runs inside a VM |
+| `auditctl` / `auditctlKit` | `Sources/auditctl*/` | The [CLI](/auditctl), and the smallest end-to-end exercise of the analyzer |
+
+The split is deliberate. Core stays AppKit-free so a change to the analyzer can
+be tested with `swift test` in seconds rather than by launching a GUI.
+
+<Note>
+  There is a second, stale copy of the helper sources under
+  `Sources/privacycommandHelper/`. The Xcode project builds the top-level
+  `privacycommandHelper` directory — that's the one that ships. Check which you
+  are editing.
+</Note>
+
+## Where to start
+
+- **A new detector** — [Contributing](/develop/contributing) has the contract,
+  including the Knowledge Base entry that has to come with it.
+- **How the pieces fit** — [Architecture](/develop/architecture).
+- **VM mode internals** — [Guest agent](/develop/guest-agent).
+- **Getting it building** — [Build from source](/develop/build-from-source).
+
+## Tests
+
+```bash
+cd privacycommand
+swift test
+```
+
+Run this before opening a PR. The Xcode project also carries an XCTest bundle
+for the app target (⌘U).

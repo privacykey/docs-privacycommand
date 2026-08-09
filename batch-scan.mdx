@@ -1,0 +1,61 @@
+---
+title: Batch scan
+description: "Triage a folder — or every app you have installed — in one pass."
+---
+
+Auditing one app at a time is fine when you have a suspect. Batch scan is for
+when you don't: point privacycommand at a folder, or at all of
+`/Applications`, and get a sortable, filterable table of everything at once.
+
+Each row carries the app's risk tier, its warning and error counts, and the
+headline signals behind them. The same analyzer runs on every bundle — this is
+the full static pass, not a cheaper approximation.
+
+Click any row to open that app in the main window for the complete report.
+
+## What it's good for
+
+**Fleet triage.** New machine, inherited laptop, or an IT estate you've just
+taken responsibility for — this is the fastest way to find the handful of apps
+worth a closer look.
+
+**Finding the outliers.** Sorting by SDK count or risk tier surfaces the apps
+that don't resemble their neighbours, which is usually more informative than
+any absolute threshold.
+
+**Periodic review.** Re-running a scan after a few months of updates shows which
+apps have drifted. Pair it with [Compare runs](/compare-runs) to see exactly
+what changed in any one of them.
+
+## Working through the results
+
+Resist reading top to bottom. A more useful order:
+
+<Steps>
+  <Step title="Sort by risk tier, then scan the top">
+    The tier is a heuristic, not a verdict — but it's a reasonable reading
+    order.
+  </Step>
+  <Step title="Filter to what you don't recognise">
+    Bundled helpers and vendor utilities you've never opened are frequently the
+    most interesting rows in the table.
+  </Step>
+  <Step title="Compare like with like">
+    Two apps in the same category with very different SDK counts is a question
+    worth asking.
+  </Step>
+  <Step title="Open the interesting ones properly">
+    The table is triage. The judgement happens in the full report.
+  </Step>
+</Steps>
+
+<Note>
+  A full `/Applications` scan takes a while — every bundle gets the real static
+  pass, including the binary work. Start it and go and do something else.
+</Note>
+
+## From the command line
+
+The same triage is available headless through
+[`auditctl preview --all-apps`](/auditctl), which is the better route for CI or
+a scheduled job.

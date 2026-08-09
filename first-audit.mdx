@@ -1,0 +1,59 @@
+---
+title: Your first audit
+description: "Drop a bundle in, and what each part of the report is telling you."
+---
+
+Drag a `.app` bundle onto the privacycommand window. A `.dmg` works too — it's
+mounted, the app inside is analysed, and it's unmounted afterwards.
+
+Nothing is executed. The whole first pass is [static](/static-analysis), so it's
+safe on a bundle you have no reason to trust.
+
+## What you get
+
+The report opens on the **Dashboard**, which is the summary view. Four things
+are worth reading first.
+
+<Steps>
+  <Step title="The risk tier">
+    A headline judgement with the findings behind it. Expand it — the tier on
+    its own is far less useful than the signals that produced it.
+  </Step>
+  <Step title="The telemetry callout">
+    How many analytics, advertising, and attribution SDKs the bundle ships,
+    heat-graded, with a per-category breakdown. See [Telemetry](/telemetry).
+  </Step>
+  <Step title="Privacy labels, if it came from the App Store">
+    The developer's declared Privacy Nutrition Labels sitting next to what the
+    binary actually contains. See [Privacy labels](/privacy-labels).
+  </Step>
+  <Step title="Background Task Management">
+    Everything the app registered to start on its own — login items, launch
+    agents, daemons, helpers. See [Background tasks](/background-tasks).
+  </Step>
+</Steps>
+
+The **Static** tab walks every signal in detail, and every finding carries a
+plain-English explanation of what it means and the command that produced it.
+
+## A worked example
+
+Point it at something you already have opinions about — a video-conferencing
+app, or anything free that's clearly monetised somehow.
+
+Useful questions to ask of the report:
+
+- **Does the SDK count match the business model?** A paid utility shipping four
+  attribution SDKs is worth a second look.
+- **Do the hard-coded domains match the vendor?** Third-party hosts in a
+  first-party app tell you who else is in the loop.
+- **Does the Privacy Manifest match the binary?** privacycommand cross-checks
+  these; a gap is more interesting than either side alone.
+- **What starts without you?** Login items and launch agents are how an app
+  keeps running when you think it isn't.
+
+## Going further
+
+Static analysis has a ceiling: it shows what an app *can* do. To see what it
+*does*, launch it under observation with a [monitored run](/monitored-runs) —
+and if you don't trust it, do that inside [VM mode](/vm-mode).

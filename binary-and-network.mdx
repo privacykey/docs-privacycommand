@@ -1,0 +1,70 @@
+---
+title: The binary summary
+description: "Which functions can open a connection, what they reach for, and how to decompile any of them."
+---
+
+Knowing an app contains `api.example.com` tells you a string exists. It doesn't
+tell you which code path uses it, or whether it's reachable at all.
+
+The forensic binary summary is a plain-English read of what the main binary
+links and calls, built around an **outbound network call-sites map**.
+
+## The call-sites map
+
+For each function that can open a connection, the map records:
+
+- **The networking symbols it reaches for** — BSD sockets, `getaddrinfo`,
+  CFNetwork, or Network.framework's `nw_*` family.
+- **Any host or URL literal sitting next to it.** Proximity is a hint, not
+  proof — a literal near a call site is often but not always the destination.
+
+That gives you a shortlist of "these are the places this app talks to the
+network from", which is a far better starting point than a flat list of every
+string in the binary.
+
+## Decompiling a call site
+
+Any call site can be decompiled in place, provided you have
+[Ghidra](https://ghidra-sre.org) installed. privacycommand shells out to it,
+caches the result, and shows the decompiled function next to the signals that
+made it interesting.
+
+<Note>
+  Ghidra is not bundled and not required. Without it you still get the call-site
+  map, the symbols, and the literals — you just can't expand a function into
+  source-like output.
+</Note>
+
+## Live call stacks
+
+Static analysis says a function *can* open a connection. A live call stack
+proves one *did*.
+
+For apps that can be relaunched under observation and are **not** using the
+hardened runtime, privacycommand can capture the stack at the moment an outbound
+connection is opened and tie it back to the function responsible.
+
+<Warning>
+  The hardened runtime is the limiting factor. Most notarized apps enable it,
+  and it blocks the instrumentation this needs — so for a typical App Store or
+  Developer ID app, expect the call-site map but not the live stack.
+</Warning>
+
+Where it does work, this is the strongest evidence privacycommand produces:
+not "this binary contains a URL" but "this function opened a connection to this
+address, and here is the path that got there".
+
+## Reading it honestly
+
+A few things worth keeping in mind:
+
+- **Absence isn't proof.** A binary can construct a hostname at runtime, so an
+  empty literal list doesn't mean an app has no destinations.
+- **Presence isn't intent.** Frameworks bring their own networking code. A call
+  site inside a vendored SDK belongs to that SDK, not necessarily to the app's
+  own logic.
+- **Stripped binaries give less.** Symbol names carry a lot of the readability
+  here; a stripped release build degrades the summary considerably.
+
+For evidence about what an app actually did rather than what it could do, pair
+this with a [monitored run](/monitored-runs).

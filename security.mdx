@@ -1,0 +1,73 @@
+---
+title: Security & privacy posture
+description: "Every outbound call privacycommand makes, and how to report a vulnerability."
+---
+
+privacycommand is a privacy tool, so it should be able to survive its own audit.
+
+## No analytics
+
+privacycommand ships **no analytics SDKs**. There is no telemetry endpoint, no
+install counter, and no crash-report bucket. Nobody is told that you installed
+it or what you pointed it at.
+
+You can check this rather than take our word for it: drop `privacycommand.app`
+onto its own window and read the [telemetry callout](/telemetry). It should be
+empty.
+
+## Every outbound call
+
+Three, all narrow:
+
+| Call | When | What is sent |
+|---|---|---|
+| **DNS reverse lookups** | During a [monitored run](/monitored-runs) | The IP addresses the *inspected* app contacted, so the Network tab can label them |
+| **App Store privacy labels** | Analysing a Mac App Store app | The inspected app's bundle ID. Nothing about you |
+| **Sparkle appcast** | Checking for updates — **off by default** | A request to `privacykey.github.io` |
+
+**All analysis runs locally.** The inspected bundle's contents never leave your
+machine, and privacycommand never uploads a report anywhere.
+
+## The privileged helper
+
+Opt-in, narrow, and it validates callers by code signature — an Apple anchor
+plus a Team ID matching its own. There is no general run-as-root path. See
+[The privileged helper](/privileged-helper).
+
+## Things worth knowing
+
+**Reports can contain sensitive strings.** Hard-coded hostnames, internal
+domains, secret *names*, and file paths from your machine. Read an export before
+sharing it — see [Exporting reports](/reports).
+
+**The kill switch changes system state.** It writes a `pf` anchor and edits
+`/etc/pf.conf`, restoring the original on removal. It is system-wide while
+armed. See [Network kill switch](/kill-switch).
+
+**A monitored run executes untrusted code** on your machine unless you use
+[VM mode](/vm-mode).
+
+**Ghidra is third-party.** If you enable decompilation, that's Ghidra's code
+running on your machine under its own terms.
+
+## What a clean report does not mean
+
+privacycommand makes **no claim to detect malware**. Static analysis can be
+defeated by an adversary who wants to hide, and dynamic analysis only observes
+the code paths a run happens to exercise.
+
+A clean report means the signals privacycommand extracts didn't look
+noteworthy. Treat it as evidence, not as a verdict.
+
+## Reporting a vulnerability
+
+Please **don't** open a public issue.
+
+Email **security@privacykey.org**, or use
+[GitHub's private advisory form](https://github.com/privacykey/privacycommand/security/advisories/new).
+We aim to respond within 72 hours.
+
+Especially interested in: anything that lets an unauthorised process reach the
+helper, any path from analysing a malicious bundle to code execution on the
+host, and anything that causes privacycommand to transmit data beyond the three
+calls listed above.

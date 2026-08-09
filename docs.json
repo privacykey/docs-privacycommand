@@ -1,0 +1,172 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "privacycommand",
+  "description": "Forensic permission audits for macOS apps — what a bundle is entitled to, what it ships, and what it actually does when you run it.",
+  "colors": {
+    "primary": "#4338CA",
+    "light": "#A5B4FC",
+    "dark": "#312E81"
+  },
+  "favicon": "/images/favicon.svg",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "banner": {
+    "content": "privacycommand is pre-1.0 and under active development — the report format may still shift between releases. [Release notes →](https://github.com/privacykey/privacycommand/releases)",
+    "dismissible": true
+  },
+  "contextual": {
+    "options": ["copy", "view", "chatgpt", "claude"]
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdits": true,
+    "raiseIssue": true
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guide",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "introduction",
+              "installation",
+              "first-audit"
+            ]
+          },
+          {
+            "group": "Reading the report",
+            "pages": [
+              "static-analysis",
+              "binary-and-network",
+              "privacy-labels",
+              "telemetry",
+              "background-tasks"
+            ]
+          },
+          {
+            "group": "Watching it run",
+            "pages": [
+              "monitored-runs",
+              "kill-switch",
+              "vm-mode"
+            ]
+          },
+          {
+            "group": "At scale",
+            "pages": [
+              "batch-scan",
+              "compare-runs",
+              "auditctl",
+              "reports"
+            ]
+          },
+          {
+            "group": "Operate",
+            "pages": [
+              "privileged-helper",
+              "updating",
+              "troubleshooting"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": [
+              "faq",
+              "security",
+              "about-these-docs"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Develop",
+        "groups": [
+          {
+            "group": "Build privacycommand",
+            "pages": [
+              "develop/overview",
+              "develop/build-from-source",
+              "develop/contributing"
+            ]
+          },
+          {
+            "group": "How it works",
+            "pages": [
+              "develop/architecture",
+              "develop/guest-agent"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/privacykey/privacycommand",
+          "icon": "github"
+        },
+        {
+          "anchor": "Releases",
+          "href": "https://github.com/privacykey/privacycommand/releases/latest",
+          "icon": "rocket"
+        },
+        {
+          "anchor": "Issues",
+          "href": "https://github.com/privacykey/privacycommand/issues",
+          "icon": "bug"
+        }
+      ]
+    }
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Issues",
+        "href": "https://github.com/privacykey/privacycommand/issues"
+      }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/privacykey/privacycommand"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/privacykey/privacycommand"
+    }
+  },
+  "search": {
+    "prompt": "Search the privacycommand docs"
+  },
+  "errors": {
+    "404": {
+      "redirect": false
+    }
+  },
+  "seo": {
+    "metatags": {
+      "og:type": "website",
+      "og:site_name": "privacycommand docs",
+      "twitter:card": "summary_large_image"
+    },
+    "indexing": "navigable"
+  },
+  "integrations": {
+    "plausible": {
+      "domain": "docs.privacycommand.privacykey.org"
+    }
+  },
+  "metadata": {
+    "robots": "index, follow"
+  },
+  "fonts": {
+    "heading": { "family": "Inter" },
+    "body": { "family": "Inter" }
+  }
+}
