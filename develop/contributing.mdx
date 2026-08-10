@@ -29,9 +29,9 @@ only says "this is bad" makes the report worse, not better.
 
 ## Writing a detector
 
-Detectors live in `Sources/privacycommandCore/Analysis/`. Keep them in Core —
-AppKit-free — so they stay testable from `swift test` and usable from
-[`auditctl`](/auditctl).
+Detectors live in `Sources/privacycommandCore/Analysis/`. Keep them there, and
+keep them free of AppKit — nothing under `Analysis/` imports it today — so they
+stay testable from `swift test` and usable from [`auditctl`](/auditctl).
 
 Useful habits:
 

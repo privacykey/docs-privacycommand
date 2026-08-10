@@ -26,15 +26,25 @@ The helper is embedded in the app bundle and registered as a daemon through
 
 ## How it protects itself
 
-The helper **validates its clients by code signature on connect**. It requires
-an Apple anchor and a Team ID matching its own, so a binary not signed by the
-same team cannot talk to it — even running as your user.
+The helper **validates its clients by code signature on connect**. It reads its
+own Team ID at startup and then requires every connecting process to satisfy an
+Apple anchor plus that same Team ID, so a binary signed by anyone else cannot
+talk to it — even running as your user.
 
-<Note>
-  This matters if you build from source. The helper's signing team must match
-  the app's, or the XPC connection is refused. See
+<Warning>
+  **That check only runs when the helper has a Team ID to compare against.**
+  If the helper binary is unsigned, ad-hoc signed, or signed with Xcode's
+  "Sign to Run Locally" (no team), the validator has nothing to match on. It
+  logs `No Team ID — accepting connection (dev mode)` and returns true for
+  every caller — no anchor check either. In that state any unprivileged process
+  running as you can drive the whole root API: start the file monitor, run the
+  BTM dump, install and remove the kill switch.
+
+  Release builds are Developer ID-signed and do carry a Team ID, so this is a
+  build-from-source condition rather than a shipped one. If you build locally
+  and care about the boundary, set a signing team on the helper target — see
   [Build from source](/develop/build-from-source).
-</Note>
+</Warning>
 
 ## What it will not do
 

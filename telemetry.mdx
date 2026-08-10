@@ -16,9 +16,14 @@ Every detection is **traceable**: hover any SDK and you see the matched strings
 that produced it. There is no opaque score — if privacycommand claims Firebase
 is present, it will show you what it found.
 
-Detected families include LaunchDarkly, Firebase, Mixpanel, AdMob, AppsFlyer,
-Amplitude, Segment, Sentry, PostHog, Statsig, Optimizely and Unleash, among
-others.
+The families that reach this card are the analytics, advertising and attribution
+ones — Firebase Analytics, Mixpanel, Amplitude, Segment, PostHog, AdMob and
+AppsFlyer among them.
+
+The database is wider than the card. Crash reporters (Sentry, Crashlytics) and
+A/B platforms (LaunchDarkly, Optimizely, Firebase Remote Config) are
+fingerprinted too and appear in the SDK list on the Static tab, but they aren't
+counted here — the heat grade is telemetry only.
 
 ## Reading the count
 
@@ -44,7 +49,13 @@ matches the business model.
 
 Alongside the SDK count, privacycommand extracts the flag names the binary
 checks at runtime — `isPro`, `isTrial`, `subscription_status`, `experiment_id`,
-and the vendor-specific equivalents.
+and the vendor-specific equivalents for LaunchDarkly, Optimizely, Firebase
+Remote Config, PostHog, Statsig and Unleash.
+
+This is a separate scanner from the SDK fingerprints, and it lands in a separate
+section. Statsig and Unleash in particular are *only* recognised here — they
+have no fingerprint entry, so they will never appear in the telemetry count
+above.
 
 This is useful for a reason that isn't really about privacy: it shows you which
 behaviours the vendor can change remotely, without shipping an update.

@@ -20,7 +20,8 @@ Then, before the first build:
   <Step title="Add the Sparkle dependency">
     **File → Add Package Dependencies…** →
     `https://github.com/sparkle-project/Sparkle`, *Up to Next Major* from
-    `2.9.0`. Tick the `Sparkle` product on the **privacycommand** target.
+    `2.9.1` — that's what the committed project pins. Tick the `Sparkle`
+    product on the **privacycommand** target.
   </Step>
   <Step title="Set the app's signing team">
     **privacycommand → Signing & Capabilities → Team.** A personal team is fine
@@ -30,9 +31,15 @@ Then, before the first build:
     **privacycommandHelper → Signing & Capabilities → Team**, set to the *same*
     team.
 
-    This is not optional. The helper's `CodeSignValidator` requires an Apple
-    anchor plus a Team ID matching its own, so a mismatch means the XPC
-    connection is refused at runtime and every privileged feature fails.
+    Two different failures hang off getting this wrong, and only one of them is
+    loud. If both targets are team-signed but with *different* teams, the
+    helper's `CodeSignValidator` refuses the XPC connection at runtime and every
+    privileged feature stops working — obvious, and easy to diagnose. If the
+    helper ends up with **no** team at all — unsigned, ad-hoc, or
+    "Sign to Run Locally" — the validator has nothing to compare against and
+    accepts *every* caller instead, silently. Your build works, and the root
+    helper is reachable by any process running as you. See
+    [How it protects itself](/privileged-helper#how-it-protects-itself).
   </Step>
   <Step title="Build">
     ⌘B to build, ⌘R to run, ⌘U for the app test bundle.

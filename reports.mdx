@@ -17,23 +17,36 @@ The complete output — nothing is summarised away. This is the format to keep i
 you're building a record over time, because a future version of privacycommand
 can read an old export even if the UI has moved on.
 
-It's also what you want for scripting. [`auditctl --json`](/auditctl) produces
-the same shape headlessly, so a scheduled job and a manual audit are directly
-comparable.
+It's also what you want for scripting — but [`auditctl --json`](/auditctl) is
+**not** this format. The CLI emits its own flat, summarised, static-only object:
+identity and signing, risk score and tier, privacy keys, capabilities, signals
+and findings, with components reduced to four counts. No events, no bundle
+model, no fidelity notes. Its keys are emitted sorted alphabetically rather than
+grouped, so read them by name and don't rely on position. The two share no
+top-level keys, so a scheduled `auditctl --json` job and a saved GUI export
+can't be diffed against each other. Pick one and stay on it.
 
 ## HTML and PDF
 
-Both are laid out as a vendor-review one-pager: the summary and risk tier first,
-then the findings with their plain-English explanations, then the detail.
+Both are laid out as a vendor-review one-pager, in this order: fidelity notes,
+then the static analysis — code signing, declared privacy keys, inferred
+capabilities, findings, hard-coded domains and paths — then the run summary
+where the risk score and tier appear, then the event log. The tier comes *after*
+the findings, not before them. PDF is a render of the same HTML.
 
 The audience is someone deciding whether to approve an app, not someone
 debugging it. If your reader is technical and wants everything, send the JSON.
 
 ## What's in an export
 
-Exports carry the findings, the signals behind them, and the Knowledge Base
-explanations — so the document stands on its own without privacycommand
-installed.
+Exports carry the findings — severity and message — and, in the JSON, the
+evidence strings behind each one.
+
+They do **not** carry the Knowledge Base explanations. HTML and PDF omit the
+reference entirely; JSON carries a `kbArticleID` per finding, which is a
+pointer, not the article. If you're sending a report to somebody who won't
+install privacycommand and the reasoning matters, paste the explanation in
+yourself.
 
 <Note>
   A report describes **one bundle at one version at one moment**. Include the

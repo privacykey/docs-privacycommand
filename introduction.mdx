@@ -15,8 +15,11 @@ at login — and, if you let it, what it reaches for while it runs.
 
 <Note>
   **Everything runs locally.** The inspected app's contents never leave your
-  machine. privacycommand makes exactly three kinds of outbound call, all
-  narrow and all described in [Security](/security).
+  machine, and no report is ever uploaded. privacycommand does make a handful of
+  outbound calls — reverse DNS, App Store privacy labels, its own update feed,
+  and, only if you ask it to fetch a pending update, that vendor's feed and
+  download or a `brew fetch` of the incoming cask. All five are enumerated in
+  [Security](/security).
 </Note>
 
 ## The two halves

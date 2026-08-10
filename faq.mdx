@@ -11,6 +11,15 @@ description: "Short answers to the questions that come up first."
     The optional [helper](/privileged-helper) unlocks live file-event
     monitoring, the Background Task Management audit without a mid-audit
     prompt, and the network kill switch. Installing it asks for admin once.
+
+    One separate thing, not admin and not the helper: reading *granted*
+    permissions out of the macOS TCC databases needs privacycommand itself to
+    hold Full Disk Access. Without it you lose the granted column, any matrix
+    row that exists only because macOS recorded a grant, the *System access
+    granted* list that flags the inspected app's own Full Disk Access,
+    Accessibility, Screen Recording or Input Monitoring, and the Verdict column
+    — every row reads *Grant unknown* — see
+    [Requested, granted, used](/static-analysis#requested-granted-used).
   </Accordion>
   <Accordion title="Does it run the app I'm inspecting?" icon="play">
     Not unless you ask it to. The first pass is entirely static. Executing the
@@ -24,10 +33,16 @@ description: "Short answers to the questions that come up first."
     from static analysis. Use it as evidence, not as a verdict.
   </Accordion>
   <Accordion title="Is anything sent anywhere?" icon="wifi">
-    Three narrow calls: DNS reverse lookups for addresses the inspected app
-    contacted, Mac App Store privacy-label lookups keyed on the inspected app's
-    bundle ID, and the Sparkle appcast when you check for updates — which is off
-    by default. Full detail in [Security](/security).
+    Nothing about you, and no part of the inspected bundle. Three calls happen
+    on privacycommand's own account: DNS reverse lookups for addresses the
+    inspected app contacted, Mac App Store privacy-label lookups keyed on the
+    inspected app's bundle ID, and the Sparkle appcast when you check for
+    updates — which is off by default.
+
+    Two more only happen when you ask for a feature that fetches something:
+    **Preview next version** reads the *inspected* app's own update feed and
+    downloads the release it points at, and `auditctl preview --fetch` has
+    Homebrew download the incoming cask. Full detail in [Security](/security).
   </Accordion>
   <Accordion title="Can I audit an app I haven't installed?" icon="download">
     Yes. Drop a `.dmg` on it, or use

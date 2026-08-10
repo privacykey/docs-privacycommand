@@ -48,8 +48,11 @@ Pretty-printed by default, non-zero exit on parse failure. Useful options:
 | `--tree` | Tree view of the bundle |
 | `--warnings` | Findings only |
 | `--warn-exit` | Non-zero exit when warnings are present — the one you want in CI |
-| `--min-tier <tier>` | Floor on reported risk tier |
-| `--verbose`, `--no-color`, `--exact` | As they sound |
+| `--no-color` | Plain output. Setting `NO_COLOR` in the environment does the same |
+| `--verbose`, `--exact` | As they sound |
+
+There is no risk-tier filter here — `--min-tier` belongs to `preview`, and
+`auditctl` exits 2 on any flag it doesn't recognise.
 
 ## Previewing updates
 
@@ -58,9 +61,14 @@ Pretty-printed by default, non-zero exit on parse failure. Useful options:
 
 ```bash
 swift run -c release auditctl preview
-swift run -c release auditctl preview --all-apps --only-noteworthy --min-tier warn
+swift run -c release auditctl preview --all-apps --only-noteworthy --min-tier high
 swift run -c release auditctl preview --json
 ```
+
+`brew` is looked for at `$HOMEBREW_PREFIX/bin/brew` if that variable is set,
+then `/opt/homebrew/bin/brew` and `/usr/local/bin/brew`. If none of them is
+executable, `preview` exits 2 and says so — `--all-apps` skips Homebrew
+entirely and reads `/Applications` and `~/Applications` directly.
 
 With `--fetch`, it downloads the incoming cask build and diffs it against the
 version you have installed — so you can see what an update *adds* before taking
@@ -76,13 +84,22 @@ swift run -c release auditctl preview --fetch firefox
 | `--apps-dir <path>` | Look somewhere other than `/Applications` |
 | `--fetch` | Download the incoming build and diff it |
 | `--only-noteworthy` | Suppress apps with nothing to say |
-| `--min-tier <tier>` | Only report at or above a risk tier |
+| `--min-tier <tier>` | Only report at or above a risk tier — `low`, `medium`, `high` or `critical`. Anything else exits 2 |
 | `--json` | Machine-readable output |
 
 <Note>
-  **`preview` is inform-only.** It never runs `brew`, never blocks an update,
-  and always exits 0. It is safe to wire into a shell prompt or a pre-upgrade
-  hook — it will not get between you and your package manager.
+  **`preview` will not upgrade anything.** It never runs `brew upgrade` and
+  never blocks or delays an update — it will not get between you and your
+  package manager.
+
+  It does run `brew`, though. In cask mode — the default — every invocation
+  shells out to `brew outdated --cask --json=v2`; only if that comes back with
+  something outdated does a second call to `brew info --cask --json=v2` follow,
+  so on an up-to-date machine you pay for `outdated` alone. Neither call is
+  timed out. `--fetch` adds `brew fetch --cask <token>`, which downloads the
+  incoming artifact into Homebrew's cache. And it exits 0 on success but 2 on
+  failure, including when Homebrew isn't installed at all. Account for both
+  before you wire it into a shell prompt or a pre-upgrade hook.
 </Note>
 
 ### The `--fetch` caveat

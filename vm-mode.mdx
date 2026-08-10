@@ -33,24 +33,56 @@ Tested against [VirtualBuddy](https://github.com/insidegui/VirtualBuddy),
 
 ## Setting it up
 
-You need a macOS VM you can install into. The broad shape:
+You need a macOS VM you can install into. privacycommand packages the agent for
+you, but not all of this is automated — it's worth knowing which parts aren't
+before you start.
 
 <Steps>
   <Step title="Build a guest and snapshot it clean">
     Install macOS in your VM tool of choice and take a snapshot before anything
     else touches it. That snapshot is what makes runs disposable.
   </Step>
-  <Step title="Install the guest agent">
-    Copy the agent into the guest and start it. It waits for a host session.
+  <Step title="Build the installer disk image">
+    **Settings → VM agent → Build installer disk image.** It packages
+    `privacycommand-guest` together with its LaunchAgent plist and an
+    `Install.command` into a small `.dmg` under
+    `~/Library/Application Support/privacycommand/`. About thirty seconds the
+    first time. No toolchain needed — a release build ships the agent binary
+    inside itself.
+
+    The same panel detects VirtualBuddy, UTM, Parallels and VMware Fusion. For
+    the first three it lists the VMs each one knows about and can start one for
+    you. VMware Fusion exposes no automation surface privacycommand can rely on,
+    so it is detected and then left alone — start that VM yourself.
+  </Step>
+  <Step title="Get the image into the guest — by hand">
+    Drag the `.dmg` onto the running VM's window. Every supported front-end
+    accepts the drop and mounts it inside the guest.
+
+    This is the step privacycommand can't do for you: none of the VM tools
+    exposes a public way for an outside app to attach a disk image to a running
+    guest.
+  </Step>
+  <Step title="Install the agent inside the guest">
+    In the guest, open the mounted volume and double-click `Install.command`.
+    It asks for the guest's admin password, installs the LaunchAgent, and
+    confirms the agent is listening on **TCP 49374** (override with `--port`).
   </Step>
   <Step title="Connect from the host">
-    privacycommand discovers the guest session and drives the run from your Mac.
+    There is no discovery — nothing on your Mac goes looking for the guest.
+    Read the guest's address from inside it with `ifconfig en0 | grep inet`,
+    then type that IP and the port into **Settings → VM agent** and click
+    **Test connection**. **Run in VM** stays disabled until the agent answers.
   </Step>
   <Step title="Revert when you're done">
     Roll the guest back to the clean snapshot. Anything the app installed goes
     with it.
   </Step>
 </Steps>
+
+Getting the app you want to inspect into the guest is also yours to do — drag,
+AirDrop or `scp` it across — and you give privacycommand its path *inside* the
+VM, because the host can't enumerate the guest's filesystem.
 
 The protocol and the agent's internals are documented under
 [Guest agent](/develop/guest-agent).

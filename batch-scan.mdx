@@ -19,9 +19,11 @@ Click any row to open that app in the main window for the complete report.
 taken responsibility for — this is the fastest way to find the handful of apps
 worth a closer look.
 
-**Finding the outliers.** Sorting by SDK count or risk tier surfaces the apps
-that don't resemble their neighbours, which is usually more informative than
-any absolute threshold.
+**Finding the outliers.** Sorting by **Trackers** or risk surfaces the apps that
+don't resemble their neighbours, which is usually more informative than any
+absolute threshold. Note that the Trackers column counts only tracker-class SDK
+hits, not every fingerprinted SDK — the full SDK count is in the CSV export and
+in each app's own report.
 
 **Periodic review.** Re-running a scan after a few months of updates shows which
 apps have drifted. Pair it with [Compare runs](/compare-runs) to see exactly
@@ -41,8 +43,8 @@ Resist reading top to bottom. A more useful order:
     most interesting rows in the table.
   </Step>
   <Step title="Compare like with like">
-    Two apps in the same category with very different SDK counts is a question
-    worth asking.
+    Two apps in the same category with very different tracker counts is a
+    question worth asking.
   </Step>
   <Step title="Open the interesting ones properly">
     The table is triage. The judgement happens in the full report.
@@ -53,6 +55,22 @@ Resist reading top to bottom. A more useful order:
   A full `/Applications` scan takes a while — every bundle gets the real static
   pass, including the binary work. Start it and go and do something else.
 </Note>
+
+## Getting the results out
+
+The batch window has its own **Export** menu, separate from the single-app
+[report exports](/reports):
+
+| Format | Contents |
+|---|---|
+| **CSV** | One row per app, twenty-two columns — identity, risk tier and score, signing, sandbox, hardened runtime, App Store origin, architecture, minimum macOS, update mechanism, download source, tracker and SDK counts, secrets, anti-analysis, launch items, hard-coded domains, concern flags, path, and any analysis error |
+| **JSON** | The same rows as structured objects, wrapped with the scan's scope and a generated-at timestamp |
+
+Both export the rows **currently shown** — filters and sort order are applied
+first. Narrow the table to what you care about, then export.
+
+This is the only way to get fleet-level results out of the GUI; the single-app
+JSON, HTML and PDF exports cover one bundle at a time.
 
 ## From the command line
 

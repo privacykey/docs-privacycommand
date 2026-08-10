@@ -15,7 +15,7 @@ isolation.**
 │                        privacycommand.app                        │
 │  ┌────────────────────┐    ┌────────────────────┐                │
 │  │  privacycommand    │    │ privacycommandCore │  pure Swift,   │
-│  │  (SwiftUI + AppKit)│───▶│    (analyzer)      │  no AppKit     │
+│  │  (SwiftUI + AppKit)│───▶│    (analyzer)      │  no views      │
 │  └─────────┬──────────┘    └────────────────────┘                │
 │            │ XPC                     ▲ analyze(bundleAt:)        │
 │            ▼                         │                           │
@@ -37,16 +37,21 @@ isolation.**
 
 ## Why each target is separate
 
-**`privacycommandCore` is AppKit-free on purpose.** It runs from the CLI, from
-tests, from the GUI, and from the helper. Keeping UI dependencies out means a
-detector change is testable in seconds with `swift test`, and that the same
-analysis code runs everywhere rather than being reimplemented per surface.
+**`privacycommandCore` carries no UI on purpose.** It runs from the CLI, from
+tests, from the GUI, and from the helper. Keeping the views out means a detector
+change is testable in seconds with `swift test`, and that the same analysis code
+runs everywhere rather than being reimplemented per surface. The `Analysis/`
+half imports nothing from AppKit; three files under `Monitoring/` do, because
+launching a bundle, reading the pasteboard, and driving a VM front-end have no
+Foundation equivalent.
 
 **The helper is tiny on purpose.** It exposes only what genuinely needs root:
 version, start/stop file monitor, the BTM dump, install/remove kill switch,
 uninstall. No general run-as-root path. It validates callers by code signature —
 Apple anchor plus matching Team ID — so a binary signed by anyone else can't
-talk to it.
+talk to it. That check depends on the helper itself being team-signed; see
+[How it protects itself](/privileged-helper#how-it-protects-itself) for what a
+no-team build does instead.
 
 **The guest protocol has zero dependencies on purpose.** The agent has to build
 and run inside a VM without compiling Core, so the wire format lives in its own
