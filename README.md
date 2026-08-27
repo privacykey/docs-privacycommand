@@ -3,7 +3,9 @@
 Source for the [privacycommand](https://github.com/privacykey/privacycommand)
 documentation site, built with [Mintlify](https://mintlify.com).
 
-Published at `docs.privacycommand.privacykey.org`.
+Production is a Cloudflare Worker serving the static export as assets
+([`wrangler.jsonc`](wrangler.jsonc)). `just deploy` builds and publishes it.
+**Hostname:** `docs.privacycommand.privacykey.org` *(DNS not configured yet)*
 
 ## Local preview
 
