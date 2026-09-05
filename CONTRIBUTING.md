@@ -20,6 +20,7 @@ to document one that doesn't work the way you've said.
 
 ```bash
 npm run check
+npm run llms
 ```
 
 This validates that every page in `docs.json` exists and every page on disk is
@@ -40,7 +41,7 @@ reachable from the navigation. CI additionally runs a link check.
 
 1. Create the `.mdx` file with `title` and `description` frontmatter.
 2. Add it to the right group in `docs.json`.
-3. Run `npm run check`.
+3. Run `npm run llms`, then `npm run check`.
 
 ## Security
 

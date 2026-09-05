@@ -1,0 +1,62 @@
+# privacycommand documentation
+
+> Forensic permission audits for macOS apps — what a bundle is entitled to, what it ships, and what it actually does when you run it.
+
+This file indexes the privacycommand documentation site at https://docs.privacycommand.privacykey.org. Every page listed below is also served as plain Markdown at the same URL with `.md` appended, and the whole site is concatenated into one Markdown file at https://docs.privacycommand.privacykey.org/llms-full.txt.
+
+Site notice: privacycommand is pre-1.0 and under active development — the report format may still shift between releases. [Release notes →](https://github.com/privacykey/privacycommand/releases)
+
+## Guide / Get started
+
+- [Introduction](https://docs.privacycommand.privacykey.org/introduction.md): What privacycommand tells you about a macOS app, and what it deliberately doesn't.
+- [Installation](https://docs.privacycommand.privacykey.org/installation.md): Homebrew, a signed DMG, or a build from source — and which update channel each one uses.
+- [Your first audit](https://docs.privacycommand.privacykey.org/first-audit.md): Drop a bundle in, and what each part of the report is telling you.
+
+## Guide / Reading the report
+
+- [Static analysis](https://docs.privacycommand.privacykey.org/static-analysis.md): What privacycommand extracts from a bundle without running it — the bulk of the report.
+- [The binary summary](https://docs.privacycommand.privacykey.org/binary-and-network.md): Which functions can open a connection, what they reach for, and how to decompile any of them.
+- [Privacy labels](https://docs.privacycommand.privacykey.org/privacy-labels.md): The developer's declared App Store labels, set against what the binary actually contains.
+- [Telemetry callout](https://docs.privacycommand.privacykey.org/telemetry.md): How many analytics, advertising, and attribution SDKs a bundle ships — and what fingerprinted each one.
+- [Background tasks](https://docs.privacycommand.privacykey.org/background-tasks.md): Every login item, launch agent, daemon, and helper an app registered to start without you.
+
+## Guide / Watching it run
+
+- [Monitored runs](https://docs.privacycommand.privacykey.org/monitored-runs.md): Launch the inspected app under observation and watch what it actually touches.
+- [Network kill switch](https://docs.privacycommand.privacykey.org/kill-switch.md): Cut the inspected app's outbound traffic system-wide, and watch how it copes.
+- [VM mode](https://docs.privacycommand.privacykey.org/vm-mode.md): Run the analysis inside a disposable macOS VM, and ship the observations back to your Mac.
+
+## Guide / At scale
+
+- [Batch scan](https://docs.privacycommand.privacykey.org/batch-scan.md): Triage a folder — or every app you have installed — in one pass.
+- [Compare runs](https://docs.privacycommand.privacykey.org/compare-runs.md): Diff two saved reports, or an update against the version you already have.
+- [auditctl (CLI)](https://docs.privacycommand.privacykey.org/auditctl.md): The same analyzer, on the command line — for scripting, CI, and previewing updates before you take them.
+- [Exporting reports](https://docs.privacycommand.privacykey.org/reports.md): JSON, HTML, and PDF — which format to reach for.
+
+## Guide / Operate
+
+- [The privileged helper](https://docs.privacycommand.privacykey.org/privileged-helper.md): What it does, what it deliberately can't do, and how to remove it.
+- [Updating](https://docs.privacycommand.privacykey.org/updating.md): Two channels sharing one DMG, and why they never fight.
+- [Troubleshooting](https://docs.privacycommand.privacykey.org/troubleshooting.md): The failures people actually hit, and what to do about each.
+
+## Guide / Help
+
+- [FAQ](https://docs.privacycommand.privacykey.org/faq.md): Short answers to the questions that come up first.
+- [Security & privacy posture](https://docs.privacycommand.privacykey.org/security.md): Every outbound call privacycommand makes, and how to report a vulnerability.
+- [About these docs](https://docs.privacycommand.privacykey.org/about-these-docs.md): How this site is written, where it can be wrong, and how to fix it.
+
+## Develop / Build privacycommand
+
+- [Developing privacycommand](https://docs.privacycommand.privacykey.org/develop/overview.md): Where the code lives, and the shape of a contribution.
+- [Build from source](https://docs.privacycommand.privacykey.org/develop/build-from-source.md): Two build paths, and the one signing step you can't skip.
+- [Contributing](https://docs.privacycommand.privacykey.org/develop/contributing.md): The one contract that matters, plus what to run before opening a PR.
+
+## Develop / How it works
+
+- [Architecture](https://docs.privacycommand.privacykey.org/develop/architecture.md): The targets, why each is separate, and how data moves between them.
+- [Guest agent](https://docs.privacycommand.privacykey.org/develop/guest-agent.md): The daemon behind VM mode — two binaries on two machines.
+
+## Optional
+
+- [privacycommand source code](https://github.com/privacykey/privacycommand): the product these docs describe
+- [Documentation source](https://github.com/privacykey/docs-privacycommand): the repository this site is built from
