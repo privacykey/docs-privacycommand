@@ -12,6 +12,7 @@ Production is a Cloudflare Worker serving the static export as assets
 ```bash
 npm run dev      # mint dev, on http://localhost:3000
 npm run check    # validate docs.json navigation against the files on disk
+npm run llms     # regenerate llms.txt and llms-full.txt after editing a page
 ```
 
 `npm run check` is the fast gate — it catches a page listed in `docs.json` with
@@ -25,8 +26,24 @@ docs.json          navigation, theme, SEO
 introduction.mdx   … the Guide tab, one file per page
 develop/           the Develop tab
 images/  logo/     assets
-scripts/           check-docs.mjs
+scripts/           check-docs.mjs, build-llms.mjs
+llms.txt           AI-readable index of every page (generated, committed)
+llms-full.txt      the whole site as one Markdown file (generated, committed)
 ```
+
+## AI-readable copies
+
+The site follows the [llms.txt](https://llmstxt.org) convention. `llms.txt` at the
+repository root indexes every page with its one-line description, and
+`llms-full.txt` is the whole site as one Markdown file. Both are committed, so
+they read fine straight from GitHub, and both are served from the site root. The
+build also writes every page as plain Markdown beside its HTML, so appending
+`.md` to any page URL returns the Markdown.
+
+`scripts/build-llms.mjs` generates all of it from `docs.json` and each page's
+frontmatter, using only Node built-ins. Run `npm run llms` after editing a page
+and commit the result; `npm run check` fails when the committed copies are out
+of date.
 
 ## Contributing
 

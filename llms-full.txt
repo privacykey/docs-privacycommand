@@ -1,0 +1,2096 @@
+# privacycommand documentation
+
+> Forensic permission audits for macOS apps — what a bundle is entitled to, what it ships, and what it actually does when you run it.
+
+The full text of every page on https://docs.privacycommand.privacykey.org, in navigation order. Each page starts with a level-one heading and a Source line giving its canonical URL.
+
+Site notice: privacycommand is pre-1.0 and under active development — the report format may still shift between releases. [Release notes →](https://github.com/privacykey/privacycommand/releases)
+
+# Introduction
+Source: https://docs.privacycommand.privacykey.org/introduction
+
+What privacycommand tells you about a macOS app, and what it deliberately doesn't.
+
+macOS will tell you what an app is *allowed* to do. Open System Settings and
+you'll see which apps hold Camera, Microphone, Full Disk Access. What it won't
+tell you is what any of them actually *does* with that permission — or what a
+bundle carries that never asks permission at all.
+
+privacycommand closes that gap. Drop a `.app` bundle (or a `.dmg`) onto it and
+it produces a forensic report: what the binary is entitled to, which analytics
+SDKs it ships, which domains are hard-coded in it, what it registered to launch
+at login — and, if you let it, what it reaches for while it runs.
+
+> **Note**
+>
+> **Everything runs locally.** The inspected app's contents never leave your
+> machine, and no report is ever uploaded. privacycommand does make a handful of
+> outbound calls — reverse DNS, App Store privacy labels, its own update feed,
+> and, only if you ask it to fetch a pending update, that vendor's feed and
+> download or a `brew fetch` of the incoming cask. All five are enumerated in
+> [Security](https://docs.privacycommand.privacykey.org/security).
+
+## The two halves
+
+**Static analysis** happens without running anything. It's safe on a bundle you
+don't trust, it's fast, and it's the bulk of the report — entitlements,
+code-signing and notarization, URL schemes, embedded helpers, SDK fingerprints,
+hard-coded hosts, Apple's Privacy Manifest checked against what the binary
+actually links. Start at [Static analysis](https://docs.privacycommand.privacykey.org/static-analysis).
+
+**Dynamic analysis** means launching the app under observation and watching
+what it does: file events, network destinations, child processes, pasteboard
+and camera and microphone access. That needs the
+[privileged helper](https://docs.privacycommand.privacykey.org/privileged-helper), and for anything you genuinely don't
+trust, it should happen inside [VM mode](https://docs.privacycommand.privacykey.org/vm-mode).
+
+## What it won't do
+
+privacycommand reports. It doesn't remediate, quarantine, or score apps against
+a compliance framework, and it makes no claim to detect malware — a determined
+adversary can hide from static analysis, and dynamic analysis only sees the code
+paths you happen to exercise.
+
+A clean report means "nothing in the signals we extract looked noteworthy". It
+does not mean the app is safe.
+
+## Where to start
+
+**[Install it](https://docs.privacycommand.privacykey.org/installation)**
+
+Homebrew, a signed DMG, or from source.
+
+**[Run your first audit](https://docs.privacycommand.privacykey.org/first-audit)**
+
+Drop a bundle in and read what comes back.
+
+**[Audit a whole fleet](https://docs.privacycommand.privacykey.org/batch-scan)**
+
+Triage every app in `/Applications` at once.
+
+**[Script it](https://docs.privacycommand.privacykey.org/auditctl)**
+
+`auditctl`, the CLI over the same analyzer.
+
+## Requirements
+
+macOS 13 or newer, Apple Silicon or Intel. The privileged helper and VM mode are
+optional — the core report works without either.
+
+# Installation
+Source: https://docs.privacycommand.privacykey.org/installation
+
+Homebrew, a signed DMG, or a build from source — and which update channel each one uses.
+
+macOS 13 or newer, Apple Silicon or Intel. privacycommand is free and MIT-licensed.
+
+## Homebrew
+
+The recommended route.
+
+```bash
+brew install privacykey/tap/privacycommand
+```
+
+The tap lives at [privacykey/homebrew-tap](https://github.com/privacykey/homebrew-tap).
+Keep it current with:
+
+```bash
+brew upgrade --cask privacycommand
+```
+
+> **Note**
+>
+> When privacycommand detects it's running from a Homebrew Caskroom it disables
+> its own in-app updater, so `brew` stays the single source of truth for the
+> on-disk version. You won't get two updaters fighting.
+
+## Direct download
+
+Grab the signed and notarized `.dmg` from
+[the latest release](https://github.com/privacykey/privacycommand/releases/latest)
+and drag the app into `/Applications`.
+
+Direct installs update through [Sparkle 2](https://sparkle-project.org).
+Automatic checks are **off by default** — opt in under **Settings → Updates**.
+See [Updating](https://docs.privacycommand.privacykey.org/updating) for how the appcast is signed and verified.
+
+## Build from source
+
+```bash
+git clone https://github.com/privacykey/privacycommand.git
+cd privacycommand/privacycommand
+open privacycommand.xcodeproj
+```
+
+You'll need to add the Sparkle package dependency and set a signing team before
+the first build — the full walkthrough is in
+[Build from source](https://docs.privacycommand.privacykey.org/develop/build-from-source).
+
+## First launch
+
+The first launch opens a five-step wizard rather than the inspector: welcome,
+static analysis, network monitoring, file monitoring, and a closing step. It's
+explanatory — no account, no sign-in — and **Skip onboarding** at the bottom
+left jumps straight past it. You only see it once; after that privacycommand
+opens to an empty inspector. **Help → Show Onboarding…** replays it, as does
+**Settings → General → Onboarding → Replay**.
+
+The fourth step, *File monitoring (optional)*, is where the
+[privileged helper](https://docs.privacycommand.privacykey.org/privileged-helper) comes up. It shows the helper's current
+status and offers to install it — so you are asked about it during first launch,
+not only the first time you reach for a feature that needs it. Skipping the step
+installs nothing, and the static report never needs it.
+
+Past the wizard, drop a `.app` bundle or a `.dmg` onto the window and the
+[first audit](https://docs.privacycommand.privacykey.org/first-audit) begins immediately.
+
+## Verifying what you installed
+
+privacycommand audits macOS apps, so it's fair to point it at itself:
+
+```bash
+codesign -dv --verbose=4 /Applications/privacycommand.app
+spctl --assess --type execute -vv /Applications/privacycommand.app
+```
+
+You can also drop `privacycommand.app` onto its own window. It ships zero
+analytics SDKs, so the [telemetry callout](https://docs.privacycommand.privacykey.org/telemetry) should come back empty —
+if it doesn't, something is wrong and we'd like to hear about it via
+[Security](https://docs.privacycommand.privacykey.org/security).
+
+# Your first audit
+Source: https://docs.privacycommand.privacykey.org/first-audit
+
+Drop a bundle in, and what each part of the report is telling you.
+
+Drag a `.app` bundle onto the privacycommand window. A `.dmg` works too — it's
+mounted, the app inside is analysed, and it's unmounted afterwards.
+
+Nothing is executed. The whole first pass is [static](https://docs.privacycommand.privacykey.org/static-analysis), so it's
+safe on a bundle you have no reason to trust.
+
+## What you get
+
+The report opens on the **Dashboard**, which is the summary view. Four things
+are worth reading first.
+
+**Step 1: The risk tier**
+
+A headline judgement with the findings behind it. Expand it — the tier on
+its own is far less useful than the signals that produced it.
+
+**Step 2: The telemetry callout**
+
+How many analytics, advertising, and attribution SDKs the bundle ships,
+heat-graded, with a per-category breakdown. See [Telemetry](https://docs.privacycommand.privacykey.org/telemetry).
+
+**Step 3: Privacy labels, if it came from the App Store**
+
+The developer's declared Privacy Nutrition Labels sitting next to what the
+binary actually contains. See [Privacy labels](https://docs.privacycommand.privacykey.org/privacy-labels).
+
+**Step 4: Background Task Management**
+
+Everything the app registered to start on its own — login items, launch
+agents, daemons, helpers. See [Background tasks](https://docs.privacycommand.privacykey.org/background-tasks).
+
+The **Static** tab walks every signal in detail, and every finding carries a
+plain-English explanation of what it means. Expand the risk tier and there's a
+layer under that again: fourteen of the contributor rows behind the score carry
+a **show source** button pointing at the evidence itself — see
+[Showing your work](https://docs.privacycommand.privacykey.org/static-analysis#showing-your-work).
+
+## A worked example
+
+Point it at something you already have opinions about — a video-conferencing
+app, or anything free that's clearly monetised somehow.
+
+Useful questions to ask of the report:
+
+- **Does the SDK count match the business model?** A paid utility shipping four
+  attribution SDKs is worth a second look.
+- **Do the hard-coded domains match the vendor?** Third-party hosts in a
+  first-party app tell you who else is in the loop.
+- **Does the Privacy Manifest match the binary?** privacycommand cross-checks
+  these; a gap is more interesting than either side alone.
+- **What starts without you?** Login items and launch agents are how an app
+  keeps running when you think it isn't.
+
+## Going further
+
+Static analysis has a ceiling: it shows what an app *can* do. To see what it
+*does*, launch it under observation with a [monitored run](https://docs.privacycommand.privacykey.org/monitored-runs) —
+and if you don't trust it, do that inside [VM mode](https://docs.privacycommand.privacykey.org/vm-mode).
+
+# Static analysis
+Source: https://docs.privacycommand.privacykey.org/static-analysis
+
+What privacycommand extracts from a bundle without running it — the bulk of the report.
+
+Static analysis reads the bundle on disk. Nothing executes, so this is the part
+you can safely run against something you don't trust at all.
+
+It is also where most of the report comes from. Roughly forty detectors run over
+a bundle; this page groups them by the question they answer.
+
+## Identity — is this what it says it is?
+
+**Code signing**
+
+Full chain validation: Developer ID, the signing Team ID, hardened-runtime
+flags, and the `spctl` assessment. The 10-character Team ID is expanded to
+the developer's registered name, so `A1B2C3D4E5` becomes a company you can
+recognise.
+
+**Notarization**
+
+A deep dive rather than a yes/no: whether the ticket is stapled, what
+`spctl` says about it, and the SHA-256 of the bundle. Every relaxation is
+reported with the entitlement or flag responsible.
+
+**Provenance**
+
+Where the bundle came from — quarantine attributes, Mac App Store receipt
+if present, and the update mechanism the app carries (Sparkle, its own
+updater, or none).
+
+## Capability — what is it allowed to do?
+
+- **Entitlements** — the full list, with the sandbox and hardened-runtime
+  exceptions called out rather than buried.
+- **TCC** — which privacy-protected resources the app declares an interest in,
+  and the usage-description strings it will show you when it asks.
+- **Privacy Manifest** — Apple's declared manifest, **cross-checked against what
+  the binary actually links**. A manifest that omits an API the binary calls is
+  more interesting than either fact alone.
+- **App extensions and helpers** — every embedded extension, XPC service, and
+  helper binary, each analysed rather than counted.
+
+### Requested, granted, used
+
+Declaring an interest is only the first of three questions, and the Static tab
+crosses all three in one table — *Permissions: requested vs granted vs used*.
+
+| Axis | Where it comes from |
+|---|---|
+| **Requested** | Info.plist usage keys and the entitlements that declare them — the bullet above |
+| **Granted** | What macOS has actually recorded, read from the system's TCC databases |
+| **Used** | What a [monitored run](https://docs.privacycommand.privacykey.org/monitored-runs) observed. Camera, microphone and screen recording only; everything else reads `—` |
+
+The gaps are the point. A capability requested and granted but never touched
+across a run you drove properly is worth a question; one macOS has granted that
+the app never declared a reason for is worth a larger one.
+
+> **Note**
+>
+> **The granted column needs Full Disk Access — privacycommand's own, not the
+> inspected app's.** macOS protects the TCC databases, so a copy of
+> privacycommand without FDA can't read them. It doesn't guess: the column
+> reads `unknown` and the table shows a card with a button into the right
+> System Settings pane. Grant it and reopen the app.
+>
+> This is a TCC grant, not root — the [helper](https://docs.privacycommand.privacykey.org/privileged-helper) is a separate
+> thing and won't help here. Four things go missing without FDA, all of them in
+> this table: the granted column; any row that exists *only* because macOS
+> recorded a grant — including the granted-but-never-declared case above, which
+> has no row at all when the grant can't be read; the *System access granted*
+> list below the table, which is where the inspected app's own Full Disk Access,
+> Accessibility, Screen Recording or Input Monitoring grants would appear; and
+> the **Verdict** column, which collapses to *Grant unknown* on every row.
+>
+> That last one costs more than it looks. *Used in binary, not declared* — a
+> warning that needs no TCC data at all, since it comes from the binary — is
+> computed after the unknown-grant check and never reached, so the warning and
+> the row ordering that surfaces it both disappear. The rest of the static
+> report is unaffected.
+
+## Content — what does it ship?
+
+- **SDK fingerprints** — analytics, advertising, and attribution SDKs matched
+  against a fingerprint database. See [Telemetry](https://docs.privacycommand.privacykey.org/telemetry).
+- **Hard-coded domains and URLs** — hosts sitting in the binary and in bundled
+  resources.
+- **URL schemes and document types** — what the app registers to handle, which
+  is also what other apps can use to poke it.
+- **Frameworks and rpaths** — what it links, where it looks, and whether the
+  search paths widen the [dylib hijacking](#dylib-hijacking-surface) surface.
+- **Embedded assets and resources** — including scripts and databases shipped
+  inside the bundle.
+- **Secrets and licence keys** — names of credential-shaped strings. It reports
+  that a key-shaped thing exists and what it appears to be for; it does not
+  print the value.
+- **Feature flags and trial state** — `isPro`, `isTrial`, `subscription_status`,
+  `experiment_id`, and the platform-specific switches behind them (LaunchDarkly,
+  Optimizely, Firebase Remote Config, PostHog, Statsig, Unleash).
+
+## Risk — what should worry you?
+
+**Anti-analysis signals.** Checks a binary can make to notice it's being
+inspected — debugger detection, VM detection, integrity checks. Present in
+plenty of legitimate DRM, so this is a signal rather than a verdict.
+
+<a id="dylib-hijacking-surface" />
+
+**Dylib hijacking surface.** Where a writable or under-specified library search
+path would let an attacker land code inside the app's process.
+
+**Behaviour analysis.** The detectors above produce signals; a behaviour pass
+turns combinations of them into findings with a risk tier, which is what drives
+the summary and the [batch scan](https://docs.privacycommand.privacykey.org/batch-scan) triage table.
+
+## Every finding is explained
+
+privacycommand ships a Knowledge Base entry alongside each detector. When a
+finding says the app has `com.apple.security.cs.disable-library-validation`,
+you get a plain-English explanation of what that entitlement relaxes and why an
+app might legitimately want it — not just the raw key.
+
+This is a deliberate contract: **a new detector is not complete without its
+Knowledge Base entry.** If you're adding one, see
+[Contributing](https://docs.privacycommand.privacykey.org/develop/contributing).
+
+## Showing your work
+
+Fourteen of the risk contributors carry a **show source** button — the
+magnifying glass next to the row on the risk-score breakdown. It opens a
+popover naming where that evidence actually came from.
+
+For the signing-related ones that's a command you can re-run yourself:
+
+```bash
+codesign -dvv /Applications/SomeApp.app
+codesign -d --entitlements :- /Applications/SomeApp.app
+spctl --assess -vvv /Applications/SomeApp.app
+```
+
+For the rest it's a location rather than a command — `Contents/Info.plist`,
+`Contents/MacOS/<executable>`, or the Files or Network tab for anything a
+monitored run produced. The popover text is selectable, and where there's a
+file behind it, **Reveal in Finder** takes you there. Contributors outside those
+fourteen have no button — for those, the Knowledge Base entry above is the
+explanation.
+
+The Executive Summary rows have a one-click copy, but what it copies is a
+Markdown summary of the finding — severity, message, evidence, Knowledge Base
+id — not a command.
+
+## Next
+
+**[The binary summary](https://docs.privacycommand.privacykey.org/binary-and-network)**
+
+Network call sites, and decompiling them.
+
+**[Privacy labels](https://docs.privacycommand.privacykey.org/privacy-labels)**
+
+Developer claims against binary contents.
+
+# The binary summary
+Source: https://docs.privacycommand.privacykey.org/binary-and-network
+
+Which functions can open a connection, what they reach for, and how to decompile any of them.
+
+Knowing an app contains `api.example.com` tells you a string exists. It doesn't
+tell you which code path uses it, or whether it's reachable at all.
+
+The forensic binary summary is a plain-English read of what the main binary
+links and calls, built around an **outbound network call-sites map**.
+
+## The call-sites map
+
+For each function that can open a connection, the map records:
+
+- **The networking symbols it reaches for** — BSD sockets, `getaddrinfo`,
+  CFNetwork, or Network.framework's `nw_*` family.
+- **Any host or URL literal sitting next to it.** Proximity is a hint, not
+  proof — a literal near a call site is often but not always the destination.
+
+That gives you a shortlist of "these are the places this app talks to the
+network from", which is a far better starting point than a flat list of every
+string in the binary.
+
+## Decompiling a call site
+
+Any call site can be decompiled in place, provided you have
+[Ghidra](https://ghidra-sre.org) installed. privacycommand shells out to it,
+caches the result, and shows the decompiled function next to the signals that
+made it interesting.
+
+> **Note**
+>
+> Ghidra is not bundled and not required. Without it you still get the call-site
+> map, the symbols, and the literals — you just can't expand a function into
+> source-like output.
+
+## Live call stacks
+
+Static analysis says a function *can* open a connection. A live call stack
+proves one *did*.
+
+For apps that can be relaunched under observation and are **not** using the
+hardened runtime, privacycommand can capture the stack at the moment an outbound
+connection is opened and tie it back to the function responsible.
+
+> **Warning**
+>
+> The hardened runtime is the limiting factor. Most notarized apps enable it,
+> and it blocks the instrumentation this needs — so for a typical App Store or
+> Developer ID app, expect the call-site map but not the live stack.
+
+Where it does work, this is the strongest evidence privacycommand produces:
+not "this binary contains a URL" but "this function opened a connection to this
+address, and here is the path that got there".
+
+## Reading it honestly
+
+A few things worth keeping in mind:
+
+- **Absence isn't proof.** A binary can construct a hostname at runtime, so an
+  empty literal list doesn't mean an app has no destinations.
+- **Presence isn't intent.** Frameworks bring their own networking code. A call
+  site inside a vendored SDK belongs to that SDK, not necessarily to the app's
+  own logic.
+- **Stripped binaries give less.** Symbol names carry a lot of the readability
+  here; a stripped release build degrades the summary considerably.
+
+For evidence about what an app actually did rather than what it could do, pair
+this with a [monitored run](https://docs.privacycommand.privacykey.org/monitored-runs).
+
+# Privacy labels
+Source: https://docs.privacycommand.privacykey.org/privacy-labels
+
+The developer's declared App Store labels, set against what the binary actually contains.
+
+When a bundle was installed from the Mac App Store, privacycommand fetches the
+developer's declared **Privacy Nutrition Labels** from Apple and shows them
+beside its own static-analysis findings.
+
+The point is the comparison. A label is a *claim*; the binary is *evidence*.
+Putting them side by side lets you see whether they agree.
+
+## How the lookup works
+
+privacycommand resolves the bundle identifier against Apple's public endpoints
+and reads the same privacy disclosures shown on the app's App Store page.
+
+> **Note**
+>
+> The request is keyed on the **inspected app's bundle ID** and nothing else.
+> No information about you, your machine, or your other apps is included. See
+> [Security](https://docs.privacycommand.privacykey.org/security) for the full list of outbound calls.
+
+## What to look for
+
+- **A declared category with no supporting evidence.** Not suspicious on its
+  own — developers over-declare to be safe.
+- **Binary evidence with no matching declaration.** More interesting. If the
+  bundle fingerprints an advertising SDK and the labels claim no data is
+  collected for advertising, that gap is worth understanding.
+- **Third-party SDKs the labels don't account for.** Labels cover the
+  developer's own collection *and* what their SDKs do. An unaccounted-for
+  analytics SDK is a real discrepancy.
+
+## Limits
+
+**Only Mac App Store apps have labels.** Direct downloads and Homebrew casks
+have nothing to fetch, and the card simply won't appear.
+
+**Labels are self-reported.** Apple does not verify them. That is precisely why
+this comparison is worth making — but it also means a mismatch points at a
+disclosure problem, not proof of misbehaviour.
+
+**A match isn't a clean bill of health.** Labels describe categories, not
+volumes, destinations, or retention.
+
+## Related
+
+privacycommand's sibling [privacytracker](https://github.com/privacykey/privacytracker)
+does the same job for **iOS** apps, and tracks label changes over time so you're
+told when an app quietly starts collecting more.
+
+# Telemetry callout
+Source: https://docs.privacycommand.privacykey.org/telemetry
+
+How many analytics, advertising, and attribution SDKs a bundle ships — and what fingerprinted each one.
+
+The Dashboard carries a telemetry card: a heat-graded count of analytics,
+advertising, and attribution SDKs found in the bundle, broken down by category.
+
+## How detection works
+
+privacycommand matches the bundle against an SDK fingerprint database. A
+fingerprint is a set of strings, symbols, framework names, and bundled resources
+characteristic of a particular SDK.
+
+Every detection is **traceable**: hover any SDK and you see the matched strings
+that produced it. There is no opaque score — if privacycommand claims Firebase
+is present, it will show you what it found.
+
+The families that reach this card are the analytics, advertising and attribution
+ones — Firebase Analytics, Mixpanel, Amplitude, Segment, PostHog, AdMob and
+AppsFlyer among them.
+
+The database is wider than the card. Crash reporters (Sentry, Crashlytics) and
+A/B platforms (LaunchDarkly, Optimizely, Firebase Remote Config) are
+fingerprinted too and appear in the SDK list on the Static tab, but they aren't
+counted here — the heat grade is telemetry only.
+
+## Reading the count
+
+The number matters less than the mix, and the mix matters less than whether it
+matches the business model.
+
+| Pattern | Reading |
+|---|---|
+| Crash reporting only | Ordinary. Almost every app ships something here. |
+| Analytics + crash | Normal for commercial software. |
+| Attribution SDKs present | The app wants to know which ad you came from. Expected in a free consumer app, odd in a paid utility. |
+| Advertising SDKs present | The app is, or has been, ad-supported. |
+| Several overlapping in one category | Often an artefact — a vendored dependency dragging its own analytics in. Worth understanding rather than alarming. |
+
+> **Note**
+>
+> **Presence is not proof of transmission.** An SDK can be linked and never
+> initialised, or gated behind a consent flow that never fires. The callout
+> tells you what shipped. To find out whether it phones home, do a
+> [monitored run](https://docs.privacycommand.privacykey.org/monitored-runs) and watch the destinations.
+
+## Feature flags and trial state
+
+Alongside the SDK count, privacycommand extracts the flag names the binary
+checks at runtime — `isPro`, `isTrial`, `subscription_status`, `experiment_id`,
+and the vendor-specific equivalents for LaunchDarkly, Optimizely, Firebase
+Remote Config, PostHog, Statsig and Unleash.
+
+This is a separate scanner from the SDK fingerprints, and it lands in a separate
+section. Statsig and Unleash in particular are *only* recognised here — they
+have no fingerprint entry, so they will never appear in the telemetry count
+above.
+
+This is useful for a reason that isn't really about privacy: it shows you which
+behaviours the vendor can change remotely, without shipping an update.
+
+## A note on our own numbers
+
+privacycommand ships **zero** analytics SDKs. Drop `privacycommand.app` onto its
+own window and the callout should come back empty. If it ever doesn't, that is
+a bug worth reporting — see [Security](https://docs.privacycommand.privacykey.org/security).
+
+# Background tasks
+Source: https://docs.privacycommand.privacykey.org/background-tasks
+
+Every login item, launch agent, daemon, and helper an app registered to start without you.
+
+An app you opened once can keep running forever. The Background Task Management
+audit lists everything a bundle registered to start on its own:
+
+- **Login items** — launched when you log in.
+- **Launch agents** — run in your user session, on a schedule or a trigger.
+- **Launch daemons** — run as root, before anybody logs in.
+- **Helper tools and XPC services** — embedded binaries the app can start.
+
+## How it's collected
+
+privacycommand reads this through the [privileged helper](https://docs.privacycommand.privacykey.org/privileged-helper),
+which runs `sfltool dumpBTM` on your behalf.
+
+> **Note**
+>
+> Doing this through the helper means **no admin prompt mid-audit**. Without the
+> helper installed, privacycommand asks before triggering the prompt itself,
+> so the audit is never the thing that surprises you with an authentication
+> dialog.
+
+## What to look for
+
+**Daemons over agents.** A launch *daemon* runs as root and starts before login.
+The bar for one should be high — a bundled updater or a VPN helper is
+reasonable; a note-taking app is not.
+
+**Items with no visible feature behind them.** If an app registered three helpers
+and you can only account for one, that's the question to chase.
+
+**Persistence that outlives the app.** Login items and launch agents commonly
+survive dragging the app to the Trash. This audit is often the fastest way to
+find leftovers from software you removed months ago.
+
+**Helpers signed by someone else.** Every embedded binary is analysed too, so
+check the signing identity matches the app's.
+
+## Acting on it
+
+privacycommand reports; it doesn't remove things. It shows the identifier and
+the command behind each entry, so you can inspect or unload it yourself:
+
+```bash
+# Inspect what is registered
+sfltool dumpBTM
+
+# Look at a specific agent
+launchctl print gui/$(id -u)/com.example.helper
+```
+
+Removing persistence properly means the vendor's own uninstaller, or unloading
+the job and deleting its plist — which is deliberately outside what a read-only
+forensic tool will do for you.
+
+# Monitored runs
+Source: https://docs.privacycommand.privacykey.org/monitored-runs
+
+Launch the inspected app under observation and watch what it actually touches.
+
+Static analysis shows capability. A monitored run shows behaviour.
+
+privacycommand launches the inspected app and streams what it does in real time:
+
+| Stream | What you see |
+|---|---|
+| **File events** | Reads and writes, via `fs_usage` through the [helper](https://docs.privacycommand.privacykey.org/privileged-helper) |
+| **Network** | Destinations with reverse-DNS labels, click-through IP lookups, row highlighting, and a highlighted-only filter |
+| **Processes** | Child processes the app spawns |
+| **Device access** | Pasteboard, camera, microphone, and screen-recording activity |
+| **USB** | Device interactions |
+| **Resources** | CPU, memory, and disk over the life of the run |
+
+A heat-graded callout fires when something spikes — a burst of disk writes, a
+fresh outbound host, a CPU climb that wasn't there a moment ago.
+
+## What you need
+
+File-event monitoring requires the [privileged helper](https://docs.privacycommand.privacykey.org/privileged-helper),
+because `fs_usage` needs root. The other streams do not.
+
+> **Warning**
+>
+> **A monitored run executes the app.** If you have real doubts about a bundle,
+> do this inside [VM mode](https://docs.privacycommand.privacykey.org/vm-mode) instead, where the blast radius is a
+> disposable guest rather than your Mac.
+
+## Getting useful coverage
+
+Dynamic analysis only sees the code paths you exercise. An app sitting on its
+launch screen will barely touch anything.
+
+- **Drive the features you care about.** If you want to know whether the export
+  function uploads anything, run an export.
+- **Watch the first thirty seconds.** Analytics and attribution SDKs typically
+  fire their first beacon at startup.
+- **Let it idle afterwards.** Some telemetry batches on a timer and won't appear
+  until minutes in.
+- **Then check what changed at rest.** Some apps only phone home on quit.
+
+## Watch mode
+
+Some behaviour won't show up in the ten minutes you're prepared to sit there:
+licence-server pings, telemetry that batches on a timer, a scheduled update
+check, a phone-home the day a trial expires. Watch mode is a monitored run you
+leave running.
+
+Start it from **Run → Start Watching…** (⇧⌘W) or the eye button in the header —
+either one starts a run first if there isn't one already. Then:
+
+- **A menu-bar icon appears** with an unread badge. A change detector diffs each
+  tick of the run against the previous one and posts a single entry per
+  genuinely new thing: a destination not contacted before, a new behavioural
+  anomaly, an event the risk classifier called surprising, a live-probe event, a
+  CPU spike. Clicking the icon opens the list and marks it read.
+- **Closing the main window does not quit privacycommand.** This is the part
+  worth knowing in advance — while watching, the app deliberately stays alive
+  with the menu-bar icon as your only handle on it. **Stop Watching** — ⇧⌘W
+  again, or the header button — ends the watch and the run together.
+- The icon style is yours to pick under **Settings → General**.
+
+Everything else is an ordinary monitored run, with the same requirements — file
+events still need the helper.
+
+## Pausing the target
+
+You can freeze the inspected app and its child processes mid-run, then resume
+them. That's ordinary process suspension — useful for reading a fast-scrolling
+event list without losing the run.
+
+It stops the app from doing anything further, but it does **not** sever
+connections already open. For that, see the
+[network kill switch](https://docs.privacycommand.privacykey.org/kill-switch).
+
+## Reading the network tab
+
+Destinations are reverse-DNS labelled, so `142.250.80.14` shows up as something
+recognisable rather than a bare address. Rows can be highlighted and then
+filtered to highlighted-only, which is the practical way to work through a busy
+run: mark the interesting destinations as you go, then review just those.
+
+Bear in mind that a reverse lookup shows the *hosting* party. A connection to a
+cloud provider's address tells you the provider, not necessarily who rented it.
+
+# Network kill switch
+Source: https://docs.privacycommand.privacykey.org/kill-switch
+
+Cut the inspected app's outbound traffic system-wide, and watch how it copes.
+
+During a [monitored run](https://docs.privacycommand.privacykey.org/monitored-runs) you can block the destinations the
+inspected app has been contacting, then watch what it does about it.
+
+This is a genuinely useful test. An app that degrades gracefully when its
+analytics endpoint disappears behaves very differently from one that blocks the
+UI, retries in a tight loop, or refuses to start.
+
+## How it works
+
+privacycommand collects every IP address the app has contacted so far in the
+run, then asks the [privileged helper](https://docs.privacycommand.privacykey.org/privileged-helper) to install a `pf`
+anchor that drops outbound traffic to that set.
+
+The helper:
+
+1. Writes an anchor file under `/etc/pf.anchors/`.
+2. Adds a reference to it in `/etc/pf.conf`, keeping a copy of the original.
+3. Reloads the ruleset with `pfctl -f /etc/pf.conf` and enables `pf` if needed.
+4. Populates the blocked-address table.
+
+Removing the kill switch flushes the anchor and rolls `/etc/pf.conf` back to
+the copy it saved.
+
+> **Warning**
+>
+> This is a **system-wide** packet-filter rule, not a per-process one. It blocks
+> those addresses for your whole Mac while it is armed. If the inspected app
+> shares a CDN or a cloud host with something you care about, that something is
+> blocked too.
+
+## Requirements and caveats
+
+**The helper must be installed.** Without it there's no privileged path to
+`pfctl`, and privacycommand will tell you so.
+
+**You need captured traffic first.** The block list is built from destinations
+observed during the run. Arm it before the app has contacted anything and there
+is nothing to block — let the run gather traffic first.
+
+**It blocks addresses, not names.** An app that re-resolves a hostname to a
+different IP can route around it. For a hard boundary, take the whole guest
+offline in [VM mode](https://docs.privacycommand.privacykey.org/vm-mode).
+
+**Always lift it when you're done.** The anchor persists until removed.
+privacycommand restores the original `pf.conf` on removal, but if the app is
+force-quit mid-run, check the switch is disarmed before you wonder why something
+else can't reach the internet.
+
+## Verifying by hand
+
+```bash
+sudo pfctl -s info
+sudo pfctl -s Anchors
+```
+
+If you ever need to clear state manually, flushing the anchor and reloading the
+system ruleset is the same pair of commands the helper uses.
+
+# VM mode
+Source: https://docs.privacycommand.privacykey.org/vm-mode
+
+Run the analysis inside a disposable macOS VM, and ship the observations back to your Mac.
+
+For a bundle you genuinely don't trust, running it on your own machine is the
+wrong move — even under observation. VM mode moves the execution into a
+disposable macOS guest and streams the results back.
+
+## The shape of it
+
+privacycommand ships a **guest agent** into a macOS VM. The agent runs the same
+observation work inside the guest and sends what it sees back to the host across
+the VM boundary, using a small zero-dependency wire protocol shared by both
+sides.
+
+Your Mac ends up with the report. The guest is what actually ran the app, and
+you can throw it away afterwards.
+
+Tested against [VirtualBuddy](https://github.com/insidegui/VirtualBuddy),
+[UTM](https://mac.getutm.app), and Parallels.
+
+## When to use it
+
+- **Anything you'd hesitate to double-click.** Unsigned bundles, things from a
+  download aggregator, a `.dmg` a stranger sent you.
+- **Software that fights inspection.** If static analysis flagged anti-analysis
+  signals, assume it may behave differently when it thinks it's being watched —
+  and note that some of those checks specifically look for VMs, so a guest can
+  change behaviour too.
+- **Anything that installs persistence.** Login items, agents, and daemons land
+  in the guest rather than on your Mac, and vanish with the snapshot.
+
+## Setting it up
+
+You need a macOS VM you can install into. privacycommand packages the agent for
+you, but not all of this is automated — it's worth knowing which parts aren't
+before you start.
+
+**Step 1: Build a guest and snapshot it clean**
+
+Install macOS in your VM tool of choice and take a snapshot before anything
+else touches it. That snapshot is what makes runs disposable.
+
+**Step 2: Build the installer disk image**
+
+**Settings → VM agent → Build installer disk image.** It packages
+`privacycommand-guest` together with its LaunchAgent plist and an
+`Install.command` into a small `.dmg` under
+`~/Library/Application Support/privacycommand/`. About thirty seconds the
+first time. No toolchain needed — a release build ships the agent binary
+inside itself.
+
+The same panel detects VirtualBuddy, UTM, Parallels and VMware Fusion. For
+the first three it lists the VMs each one knows about and can start one for
+you. VMware Fusion exposes no automation surface privacycommand can rely on,
+so it is detected and then left alone — start that VM yourself.
+
+**Step 3: Get the image into the guest — by hand**
+
+Drag the `.dmg` onto the running VM's window. Every supported front-end
+accepts the drop and mounts it inside the guest.
+
+This is the step privacycommand can't do for you: none of the VM tools
+exposes a public way for an outside app to attach a disk image to a running
+guest.
+
+**Step 4: Install the agent inside the guest**
+
+In the guest, open the mounted volume and double-click `Install.command`.
+It asks for the guest's admin password, installs the LaunchAgent, and
+confirms the agent is listening on **TCP 49374** (override with `--port`).
+
+**Step 5: Connect from the host**
+
+There is no discovery — nothing on your Mac goes looking for the guest.
+Read the guest's address from inside it with `ifconfig en0 | grep inet`,
+then type that IP and the port into **Settings → VM agent** and click
+**Test connection**. **Run in VM** stays disabled until the agent answers.
+
+**Step 6: Revert when you're done**
+
+Roll the guest back to the clean snapshot. Anything the app installed goes
+with it.
+
+Getting the app you want to inspect into the guest is also yours to do — drag,
+AirDrop or `scp` it across — and you give privacycommand its path *inside* the
+VM, because the host can't enumerate the guest's filesystem.
+
+The protocol and the agent's internals are documented under
+[Guest agent](https://docs.privacycommand.privacykey.org/develop/guest-agent).
+
+## Limits worth knowing
+
+**VM detection is common.** Plenty of software — DRM especially — behaves
+differently in a guest. A clean run in a VM is not proof of a clean run on
+bare metal.
+
+**Apple Silicon guests run Apple Silicon macOS.** You can't audit an Intel-only
+build in an ARM guest without Rosetta in the picture, which changes what you're
+observing.
+
+**Performance costs coverage.** Guests are slower, and a slow run tends to be a
+shorter run, which means fewer exercised code paths. Give it longer than you
+would on the host.
+
+# Batch scan
+Source: https://docs.privacycommand.privacykey.org/batch-scan
+
+Triage a folder — or every app you have installed — in one pass.
+
+Auditing one app at a time is fine when you have a suspect. Batch scan is for
+when you don't: point privacycommand at a folder, or at all of
+`/Applications`, and get a sortable, filterable table of everything at once.
+
+Each row carries the app's risk tier, its warning and error counts, and the
+headline signals behind them. The same analyzer runs on every bundle — this is
+the full static pass, not a cheaper approximation.
+
+Click any row to open that app in the main window for the complete report.
+
+## What it's good for
+
+**Fleet triage.** New machine, inherited laptop, or an IT estate you've just
+taken responsibility for — this is the fastest way to find the handful of apps
+worth a closer look.
+
+**Finding the outliers.** Sorting by **Trackers** or risk surfaces the apps that
+don't resemble their neighbours, which is usually more informative than any
+absolute threshold. Note that the Trackers column counts only tracker-class SDK
+hits, not every fingerprinted SDK — the full SDK count is in the CSV export and
+in each app's own report.
+
+**Periodic review.** Re-running a scan after a few months of updates shows which
+apps have drifted. Pair it with [Compare runs](https://docs.privacycommand.privacykey.org/compare-runs) to see exactly
+what changed in any one of them.
+
+## Working through the results
+
+Resist reading top to bottom. A more useful order:
+
+**Step 1: Sort by risk tier, then scan the top**
+
+The tier is a heuristic, not a verdict — but it's a reasonable reading
+order.
+
+**Step 2: Filter to what you don't recognise**
+
+Bundled helpers and vendor utilities you've never opened are frequently the
+most interesting rows in the table.
+
+**Step 3: Compare like with like**
+
+Two apps in the same category with very different tracker counts is a
+question worth asking.
+
+**Step 4: Open the interesting ones properly**
+
+The table is triage. The judgement happens in the full report.
+
+> **Note**
+>
+> A full `/Applications` scan takes a while — every bundle gets the real static
+> pass, including the binary work. Start it and go and do something else.
+
+## Getting the results out
+
+The batch window has its own **Export** menu, separate from the single-app
+[report exports](https://docs.privacycommand.privacykey.org/reports):
+
+| Format | Contents |
+|---|---|
+| **CSV** | One row per app, twenty-two columns — identity, risk tier and score, signing, sandbox, hardened runtime, App Store origin, architecture, minimum macOS, update mechanism, download source, tracker and SDK counts, secrets, anti-analysis, launch items, hard-coded domains, concern flags, path, and any analysis error |
+| **JSON** | The same rows as structured objects, wrapped with the scan's scope and a generated-at timestamp |
+
+Both export the rows **currently shown** — filters and sort order are applied
+first. Narrow the table to what you care about, then export.
+
+This is the only way to get fleet-level results out of the GUI; the single-app
+JSON, HTML and PDF exports cover one bundle at a time.
+
+## From the command line
+
+The same triage is available headless through
+[`auditctl preview --all-apps`](https://docs.privacycommand.privacykey.org/auditctl), which is the better route for CI or
+a scheduled job.
+
+# Compare runs
+Source: https://docs.privacycommand.privacykey.org/compare-runs
+
+Diff two saved reports, or an update against the version you already have.
+
+A single report tells you what an app is today. The interesting question is
+usually what changed.
+
+privacycommand compares in two directions.
+
+## Compare an update before it lands
+
+Drop in a candidate update and diff it against the version currently on disk.
+For Sparkle-distributed apps, privacycommand can read the appcast itself and
+pull the next release straight into the inspector — so the audit happens before
+the live app's own updater ever sees it.
+
+This is the highest-value comparison the tool does: an app you already trusted
+is exactly the one whose new version deserves a look.
+
+## Compare any two saved reports
+
+The **History** tab keeps your previous runs. Pick any two and diff them
+side by side. Added and removed items are colour-cued across:
+
+- entitlements
+- hard-coded domains
+- SDK fingerprints
+- login items and launch agents
+- findings
+
+A **show-only-changes** toggle collapses everything identical, which is what
+makes a large diff readable.
+
+## Reading a diff well
+
+**New entitlements are the headline.** An app that has quietly gained Full Disk
+Access or a hardened-runtime exception has changed what it can do, regardless of
+what the release notes say.
+
+**New domains are the second thing.** Especially third-party ones — that is
+often a new SDK arriving.
+
+**Removals matter too.** An SDK disappearing is usually good news, but a
+*capability* disappearing can mean functionality moved somewhere less visible.
+
+**Version churn is noise.** Build identifiers, timestamps, and resource hashes
+change on every release. Focus on the categories above.
+
+## From the command line
+
+```bash
+swift run -c release auditctl preview --fetch <cask>
+```
+
+does the same before-and-after against an incoming Homebrew cask build — see
+[auditctl](https://docs.privacycommand.privacykey.org/auditctl), including the note about Gatekeeper and freshly
+downloaded artifacts.
+
+# auditctl (CLI)
+Source: https://docs.privacycommand.privacykey.org/auditctl
+
+The same analyzer, on the command line — for scripting, CI, and previewing updates before you take them.
+
+`auditctl` is a small CLI over the same analyzer the app uses. Useful for
+scripting, for CI, and for the one thing the GUI can't easily do: checking an
+update *before* you install it.
+
+## Building it
+
+`auditctl` is not shipped in the DMG. Build it from a checkout:
+
+```bash
+cd privacycommand
+swift build -c release
+swift run -c release auditctl --help
+```
+
+## Usage
+
+```
+auditctl                       interactive browser (on a terminal)
+auditctl <target>              static audit of one app (name or path)
+auditctl audit <target>        same, explicit
+auditctl -i, interactive       force the interactive browser
+auditctl preview [options]     preview apps before you update them
+```
+
+`<target>` is either a path to a `.app` or a substring of an app name, so
+`auditctl fire` will find Firefox.
+
+Run bare on a terminal, `auditctl` opens an interactive browser. With stdin or
+stdout redirected it prints usage instead, which keeps it safe in CI.
+
+### Auditing one app
+
+```bash
+swift run -c release auditctl /Applications/SomeApp.app
+```
+
+Pretty-printed by default, non-zero exit on parse failure. Useful options:
+
+| Flag | Effect |
+|---|---|
+| `--json` | Machine-readable output |
+| `--short` | Condensed summary |
+| `--tree` | Tree view of the bundle |
+| `--warnings` | Findings only |
+| `--warn-exit` | Non-zero exit when warnings are present — the one you want in CI |
+| `--no-color` | Plain output. Setting `NO_COLOR` in the environment does the same |
+| `--verbose`, `--exact` | As they sound |
+
+There is no risk-tier filter here — `--min-tier` belongs to `preview`, and
+`auditctl` exits 2 on any flag it doesn't recognise.
+
+## Previewing updates
+
+`preview` is the interesting subcommand. With no arguments it looks at your
+**outdated Homebrew casks** and audits what you're about to receive:
+
+```bash
+swift run -c release auditctl preview
+swift run -c release auditctl preview --all-apps --only-noteworthy --min-tier high
+swift run -c release auditctl preview --json
+```
+
+`brew` is looked for at `$HOMEBREW_PREFIX/bin/brew` if that variable is set,
+then `/opt/homebrew/bin/brew` and `/usr/local/bin/brew`. If none of them is
+executable, `preview` exits 2 and says so — `--all-apps` skips Homebrew
+entirely and reads `/Applications` and `~/Applications` directly.
+
+With `--fetch`, it downloads the incoming cask build and diffs it against the
+version you have installed — so you can see what an update *adds* before taking
+it:
+
+```bash
+swift run -c release auditctl preview --fetch firefox
+```
+
+| Flag | Effect |
+|---|---|
+| `--all-apps` | Scan everything installed, not just outdated casks |
+| `--apps-dir <path>` | Look somewhere other than `/Applications` |
+| `--fetch` | Download the incoming build and diff it |
+| `--only-noteworthy` | Suppress apps with nothing to say |
+| `--min-tier <tier>` | Only report at or above a risk tier — `low`, `medium`, `high` or `critical`. Anything else exits 2 |
+| `--json` | Machine-readable output |
+
+> **Note**
+>
+> **`preview` will not upgrade anything.** It never runs `brew upgrade` and
+> never blocks or delays an update — it will not get between you and your
+> package manager.
+>
+> It does run `brew`, though. In cask mode — the default — every invocation
+> shells out to `brew outdated --cask --json=v2`; only if that comes back with
+> something outdated does a second call to `brew info --cask --json=v2` follow,
+> so on an up-to-date machine you pay for `outdated` alone. Neither call is
+> timed out. `--fetch` adds `brew fetch --cask <token>`, which downloads the
+> incoming artifact into Homebrew's cache. And it exits 0 on success but 2 on
+> failure, including when Homebrew isn't installed at all. Account for both
+> before you wire it into a shell prompt or a pre-upgrade hook.
+
+### The `--fetch` caveat
+
+With `--fetch`, an incoming build is analysed *before* Gatekeeper has assessed
+it. A freshly downloaded artifact can therefore show a one-off "notarization"
+difference that is an artefact of the download rather than a real change in the
+app. The output flags this where it applies — read it before drawing
+conclusions.
+
+`.dmg` and `.zip` cask artifacts are understood. `.pkg` is skipped.
+
+# Exporting reports
+Source: https://docs.privacycommand.privacykey.org/reports
+
+JSON, HTML, and PDF — which format to reach for.
+
+Every audit exports three ways.
+
+| Format | Shape | Reach for it when |
+|---|---|---|
+| **JSON** | Every detector's raw output | You're feeding another tool, diffing programmatically, or keeping an archive that outlives the UI |
+| **HTML** | Reads like an IT vendor-review one-pager | You're sending it to somebody who won't install privacycommand |
+| **PDF** | Same layout, fixed | It's going into a ticket, a procurement pack, or a compliance file |
+
+## JSON
+
+The complete output — nothing is summarised away. This is the format to keep if
+you're building a record over time, because a future version of privacycommand
+can read an old export even if the UI has moved on.
+
+It's also what you want for scripting — but [`auditctl --json`](https://docs.privacycommand.privacykey.org/auditctl) is
+**not** this format. The CLI emits its own flat, summarised, static-only object:
+identity and signing, risk score and tier, privacy keys, capabilities, signals
+and findings, with components reduced to four counts. No events, no bundle
+model, no fidelity notes. Its keys are emitted sorted alphabetically rather than
+grouped, so read them by name and don't rely on position. The two share no
+top-level keys, so a scheduled `auditctl --json` job and a saved GUI export
+can't be diffed against each other. Pick one and stay on it.
+
+## HTML and PDF
+
+Both are laid out as a vendor-review one-pager, in this order: fidelity notes,
+then the static analysis — code signing, declared privacy keys, inferred
+capabilities, findings, hard-coded domains and paths — then the run summary
+where the risk score and tier appear, then the event log. The tier comes *after*
+the findings, not before them. PDF is a render of the same HTML.
+
+The audience is someone deciding whether to approve an app, not someone
+debugging it. If your reader is technical and wants everything, send the JSON.
+
+## What's in an export
+
+Exports carry the findings — severity and message — and, in the JSON, the
+evidence strings behind each one.
+
+They do **not** carry the Knowledge Base explanations. HTML and PDF omit the
+reference entirely; JSON carries a `kbArticleID` per finding, which is a
+pointer, not the article. If you're sending a report to somebody who won't
+install privacycommand and the reasoning matters, paste the explanation in
+yourself.
+
+> **Note**
+>
+> A report describes **one bundle at one version at one moment**. Include the
+> app version and the audit date whenever you file one; a report about
+> "SomeApp" with no version attached ages badly and misleads later.
+
+## A caution on sharing
+
+A report can contain hard-coded hostnames, internal domains, secret *names* (not
+values), and file paths from your machine. Before attaching one to a public
+issue or a vendor email, read it — particularly the strings and paths sections —
+the same way you would any diagnostic bundle.
+
+# The privileged helper
+Source: https://docs.privacycommand.privacykey.org/privileged-helper
+
+What it does, what it deliberately can't do, and how to remove it.
+
+Some of what privacycommand does needs root. Rather than asking you to run the
+whole app as root, it ships a small privileged helper and keeps its API surface
+deliberately tiny.
+
+## What needs it
+
+| Capability | Why root |
+|---|---|
+| File-event monitoring | `fs_usage` requires elevated privileges |
+| [Background Task Management audit](https://docs.privacycommand.privacykey.org/background-tasks) | `sfltool dumpBTM` — through the helper this avoids an admin prompt mid-audit |
+| [Network kill switch](https://docs.privacycommand.privacykey.org/kill-switch) | Installing a `pf` anchor needs `pfctl` |
+
+Everything else — the whole static report, App Store privacy labels, the
+telemetry callout, batch scan, exports — runs unprivileged. **The helper is
+opt-in and privacycommand is useful without it.**
+
+## How it's installed
+
+The helper is embedded in the app bundle and registered as a daemon through
+`SMAppService`. You're asked once; after that it stays out of your way.
+
+## How it protects itself
+
+The helper **validates its clients by code signature on connect**. It reads its
+own Team ID at startup and then requires every connecting process to satisfy an
+Apple anchor plus that same Team ID, so a binary signed by anyone else cannot
+talk to it — even running as your user.
+
+> **Warning**
+>
+> **That check only runs when the helper has a Team ID to compare against.**
+> If the helper binary is unsigned, ad-hoc signed, or signed with Xcode's
+> "Sign to Run Locally" (no team), the validator has nothing to match on. It
+> logs `No Team ID — accepting connection (dev mode)` and returns true for
+> every caller — no anchor check either. In that state any unprivileged process
+> running as you can drive the whole root API: start the file monitor, run the
+> BTM dump, install and remove the kill switch.
+>
+> Release builds are Developer ID-signed and do carry a Team ID, so this is a
+> build-from-source condition rather than a shipped one. If you build locally
+> and care about the boundary, set a signing team on the helper target — see
+> [Build from source](https://docs.privacycommand.privacykey.org/develop/build-from-source).
+
+## What it will not do
+
+The helper exposes a handful of operations and nothing else: report its version,
+start and stop the file monitor, run the BTM dump, install and remove the kill
+switch, and uninstall itself.
+
+There is no general "run this command as root" path. That's the point of a
+narrow helper rather than a privileged app.
+
+## Removing it
+
+privacycommand can uninstall the helper itself — it exposes an uninstall
+operation for exactly this. Use that in preference to deleting files by hand.
+
+To confirm it's gone:
+
+```bash
+sudo launchctl print system/org.privacykey.privacycommand.HelperTool
+```
+
+A "could not find service" response is what you want. If you removed
+privacycommand without uninstalling the helper first, reinstall the app, remove
+the helper properly, then remove the app.
+
+## If it misbehaves
+
+Symptoms and where to look are collected in
+[Troubleshooting](https://docs.privacycommand.privacykey.org/troubleshooting#the-helper).
+
+# Updating
+Source: https://docs.privacycommand.privacykey.org/updating
+
+Two channels sharing one DMG, and why they never fight.
+
+privacycommand updates through two channels that ship the same DMG.
+
+## Homebrew
+
+```bash
+brew upgrade --cask privacycommand
+```
+
+When privacycommand detects it's running from a Homebrew Caskroom, it
+**disables its own installer**. `brew` stays authoritative for the on-disk
+version, and you never get two updaters disagreeing about what's installed.
+
+## Sparkle
+
+Direct downloads update in-app via [Sparkle 2](https://sparkle-project.org).
+
+**Automatic checks are off by default.** Opt in under **Settings → Updates**.
+A privacy tool that phones a server on a timer without asking would be a poor
+advertisement for itself, so it asks.
+
+The appcast is published at
+`https://privacykey.github.io/privacycommand/appcast.xml` and **signed with
+EdDSA**. Sparkle verifies the signature before applying anything, so a tampered
+or substituted response can't push an update.
+
+## What an update can change
+
+privacycommand is pre-1.0 and says so in its own README. Between releases,
+expect:
+
+- **New and changed detectors.** Findings can appear on an app that previously
+  showed none — usually because detection improved, not because the app changed.
+- **Report-format shifts.** The JSON export shape is not yet stable.
+
+> **Note**
+>
+> If you keep audits as a record over time, export [JSON](https://docs.privacycommand.privacykey.org/reports) and store it
+> with the app version and audit date. A finding that appears after an update is
+> otherwise indistinguishable from a change in the app itself — and
+> [Compare runs](https://docs.privacycommand.privacykey.org/compare-runs) is only meaningful when you know which
+> privacycommand version produced each side.
+
+## Checking your version
+
+The version is in **privacycommand → About**. When filing an issue, include it
+along with your macOS version and whether the helper is installed.
+
+# Troubleshooting
+Source: https://docs.privacycommand.privacykey.org/troubleshooting
+
+The failures people actually hit, and what to do about each.
+
+## Analysis
+
+**A .dmg won't analyse**
+
+privacycommand mounts the image, analyses the app inside, and unmounts it.
+That fails if the image needs a licence agreement accepted, is encrypted, or
+contains a `.pkg` installer rather than an app bundle.
+
+Mount it yourself, drag the `.app` out, and analyse that directly.
+
+**The binary summary is nearly empty**
+
+Most likely a stripped release build — symbol names carry much of the
+readability in the [call-sites map](https://docs.privacycommand.privacykey.org/binary-and-network). You'll still get
+entitlements, signing, SDK fingerprints and strings.
+
+Electron and other runtime-hosted apps are also thin here: the interesting
+code is JavaScript inside an asar archive, not the Mach-O.
+
+**Decompilation is unavailable**
+
+Ghidra isn't installed, or privacycommand can't find it. It is optional and
+not bundled — everything else works without it.
+
+**No privacy labels appear**
+
+Expected unless the app came from the Mac App Store. Direct downloads and
+Homebrew casks have no labels to fetch. See [Privacy labels](https://docs.privacycommand.privacykey.org/privacy-labels).
+
+**Every permission grant reads unknown**
+
+privacycommand couldn't read the TCC databases, which is where the
+*granted* axis of the permission matrix comes from. macOS protects them, so
+privacycommand itself needs **Full Disk Access** to open them.
+
+The matrix shows a card with a button straight into the right System
+Settings pane. Grant it and reopen privacycommand.
+
+Four things go missing, all of them in the permission matrix: the granted
+column, any row that exists only because macOS recorded a grant, the
+*System access granted* list that flags the inspected app's own Full Disk
+Access, Accessibility, Screen Recording or Input Monitoring, and the
+**Verdict** column — every row reads *Grant unknown*, which also suppresses
+the *Used in binary, not declared* warning even though that one needs no TCC
+data. The rest of the static report is unaffected. See
+[Requested, granted, used](https://docs.privacycommand.privacykey.org/static-analysis#requested-granted-used).
+
+<a id="the-helper" />
+
+## The helper
+
+**Installation is refused or immediately fails**
+
+If you built from source, the helper's signing team must match the app's —
+`CodeSignValidator` rejects the XPC connection otherwise. Check both targets
+in **Signing & Capabilities**.
+
+For a release build, this usually means a damaged or partially quarantined
+install. Reinstall from a fresh download.
+
+**A source build connects, but the team check never fires**
+
+Expected, and worth knowing about. A helper with no Team Identifier —
+unsigned, ad-hoc signed, or Xcode's "Sign to Run Locally" — accepts every
+connecting process rather than refusing them. It logs
+`No Team ID — accepting connection (dev mode)`; check with
+`log show --predicate 'process == "privacycommandHelper"' --last 5m`.
+
+Set a signing team on the helper target to get the real check back. See
+[How it protects itself](https://docs.privacycommand.privacykey.org/privileged-helper#how-it-protects-itself).
+
+**Connected, but no file events**
+
+`fs_usage` produces nothing for a process it can't observe. Confirm the run
+actually launched the app and that the target isn't a launcher stub that
+exits after spawning the real binary elsewhere.
+
+**The helper survived uninstalling the app**
+
+Reinstall privacycommand, uninstall the helper from within it, then remove
+the app. Verify with:
+
+```bash
+sudo launchctl print system/org.privacykey.privacycommand.HelperTool
+```
+
+## Network
+
+**The kill switch won't arm**
+
+It needs the helper installed, and it needs destinations to block — the list
+is built from traffic already captured in this run. Let the app talk to
+something first.
+
+**Something unrelated lost connectivity**
+
+The kill switch is a **system-wide** `pf` rule, not per-process. If the
+inspected app shares a host or CDN with something else, that is blocked too.
+Disarm it. See [Network kill switch](https://docs.privacycommand.privacykey.org/kill-switch).
+
+**The app routed around the block**
+
+Blocking is by address. An app that re-resolves a hostname to a different IP
+can escape it. For a hard boundary, take the guest offline in
+[VM mode](https://docs.privacycommand.privacykey.org/vm-mode).
+
+## auditctl
+
+**preview says Homebrew was not found**
+
+`auditctl preview` looks for `brew` at `$HOMEBREW_PREFIX/bin/brew` first, if
+that variable is set, then `/opt/homebrew/bin/brew` and
+`/usr/local/bin/brew`. A Homebrew installed somewhere else is invisible to
+it unless you point the variable at the prefix:
+
+```bash
+HOMEBREW_PREFIX="$(brew --prefix)" swift run -c release auditctl preview
+```
+
+Or skip brew entirely with `preview --all-apps`, which reads
+`/Applications` and `~/Applications` directly.
+
+**Colour codes in a log file or CI transcript**
+
+Pass `--no-color`, or set `NO_COLOR` in the environment — `auditctl` honours
+both. See [auditctl](https://docs.privacycommand.privacykey.org/auditctl).
+
+## Filing a useful issue
+
+Include the privacycommand version, your macOS version and architecture,
+whether the helper is installed, and — if you can share it — the
+[JSON export](https://docs.privacycommand.privacykey.org/reports). Open it at
+[github.com/privacykey/privacycommand/issues](https://github.com/privacykey/privacycommand/issues).
+
+For anything security-sensitive, don't use a public issue — see
+[Security](https://docs.privacycommand.privacykey.org/security).
+
+# FAQ
+Source: https://docs.privacycommand.privacykey.org/faq
+
+Short answers to the questions that come up first.
+
+**Do I need to give it admin access?**
+
+Not for the core report. Static analysis, the App Store privacy-label
+cross-check, batch scan and exports all run unprivileged.
+
+The optional [helper](https://docs.privacycommand.privacykey.org/privileged-helper) unlocks live file-event
+monitoring, the Background Task Management audit without a mid-audit
+prompt, and the network kill switch. Installing it asks for admin once.
+
+One separate thing, not admin and not the helper: reading *granted*
+permissions out of the macOS TCC databases needs privacycommand itself to
+hold Full Disk Access. Without it you lose the granted column, any matrix
+row that exists only because macOS recorded a grant, the *System access
+granted* list that flags the inspected app's own Full Disk Access,
+Accessibility, Screen Recording or Input Monitoring, and the Verdict column
+— every row reads *Grant unknown* — see
+[Requested, granted, used](https://docs.privacycommand.privacykey.org/static-analysis#requested-granted-used).
+
+**Does it run the app I'm inspecting?**
+
+Not unless you ask it to. The first pass is entirely static. Executing the
+app only happens in a [monitored run](https://docs.privacycommand.privacykey.org/monitored-runs), which you start
+deliberately — and for anything you don't trust, do it in
+[VM mode](https://docs.privacycommand.privacykey.org/vm-mode).
+
+**Does it detect malware?**
+
+No, and it doesn't claim to. It reports what a bundle is entitled to, what
+it ships, and what it does when observed. A determined adversary can hide
+from static analysis. Use it as evidence, not as a verdict.
+
+**Is anything sent anywhere?**
+
+Nothing about you, and no part of the inspected bundle. Three calls happen
+on privacycommand's own account: DNS reverse lookups for addresses the
+inspected app contacted, Mac App Store privacy-label lookups keyed on the
+inspected app's bundle ID, and the Sparkle appcast when you check for
+updates — which is off by default.
+
+Two more only happen when you ask for a feature that fetches something:
+**Preview next version** reads the *inspected* app's own update feed and
+downloads the release it points at, and `auditctl preview --fetch` has
+Homebrew download the incoming cask. Full detail in [Security](https://docs.privacycommand.privacykey.org/security).
+
+**Can I audit an app I haven't installed?**
+
+Yes. Drop a `.dmg` on it, or use
+[`auditctl preview --fetch`](https://docs.privacycommand.privacykey.org/auditctl) to pull an incoming Homebrew cask
+build and diff it against what you have.
+
+**Why does an app show findings after an update to privacycommand?**
+
+Usually because detection improved, not because the app changed. Detectors
+are added between releases. If you're tracking an app over time, note which
+privacycommand version produced each report — see [Updating](https://docs.privacycommand.privacykey.org/updating).
+
+**Is it free? Is there a paid tier?**
+
+Free, MIT-licensed, no paid tier and no upsell.
+
+**Does it work on Intel Macs?**
+
+Yes — macOS 13 or newer, Apple Silicon or Intel.
+
+**Can I run it in CI?**
+
+Yes, via [`auditctl`](https://docs.privacycommand.privacykey.org/auditctl). Use `--json` for machine-readable output
+and `--warn-exit` to fail a build on findings. Run bare with stdout
+redirected it prints usage rather than opening the interactive browser, so
+it's safe in a pipeline.
+
+**What about iOS apps?**
+
+Different tool — [privacytracker](https://github.com/privacykey/privacytracker)
+watches iOS App Store privacy labels and tells you when they change.
+
+# Security & privacy posture
+Source: https://docs.privacycommand.privacykey.org/security
+
+Every outbound call privacycommand makes, and how to report a vulnerability.
+
+privacycommand is a privacy tool, so it should be able to survive its own audit.
+
+## No analytics
+
+privacycommand ships **no analytics SDKs**. There is no telemetry endpoint, no
+install counter, and no crash-report bucket. Nobody is told that you installed
+it or what you pointed it at.
+
+You can check this rather than take our word for it: drop `privacycommand.app`
+onto its own window and read the [telemetry callout](https://docs.privacycommand.privacykey.org/telemetry). It should be
+empty.
+
+## Every outbound call
+
+Five, all narrow. The first three happen on privacycommand's own account; the
+last two only when you ask for a feature that fetches something:
+
+| Call | When | What is sent |
+|---|---|---|
+| **DNS reverse lookups** | During a [monitored run](https://docs.privacycommand.privacykey.org/monitored-runs) | The IP addresses the *inspected* app contacted, so the Network tab can label them |
+| **App Store privacy labels** | Analysing a Mac App Store app | The inspected app's bundle ID, to Apple's lookup endpoint and then that app's App Store product page. Nothing about you |
+| **Sparkle appcast** | Checking for updates — **off by default** | A request to `privacykey.github.io` |
+| **The inspected app's own appcast** | You click **Preview next version** on a Sparkle-distributed app — see [Compare runs](https://docs.privacycommand.privacykey.org/compare-runs) | A request to the *vendor's* feed URL, then a download of the release it points at. HTTPS only, capped at 600 MB, analysed but never executed |
+| **`brew fetch`** | [`auditctl preview --fetch`](https://docs.privacycommand.privacykey.org/auditctl) | Homebrew downloads the incoming cask artifact into its own cache, from wherever the cask points |
+
+**All analysis runs locally.** The inspected bundle's contents never leave your
+machine, and privacycommand never uploads a report anywhere. The last two rows
+are downloads *into* your machine, not uploads out of it.
+
+## The privileged helper
+
+Opt-in, narrow, and there is no general run-as-root path. See
+[The privileged helper](https://docs.privacycommand.privacykey.org/privileged-helper).
+
+It validates callers by code signature on connect — an Apple anchor plus a Team
+ID matching its own — **but only when the helper binary itself carries a Team
+Identifier.** That is the case for any Developer ID build, including every
+release. A helper that is unsigned, ad-hoc signed, or built with Xcode's
+"Sign to Run Locally" has no Team ID to compare against, and in that state it
+accepts every connecting process. Treat a locally built helper as reachable by
+anything running as you.
+
+## Things worth knowing
+
+**Reports can contain sensitive strings.** Hard-coded hostnames, internal
+domains, secret *names*, and file paths from your machine. Read an export before
+sharing it — see [Exporting reports](https://docs.privacycommand.privacykey.org/reports).
+
+**The kill switch changes system state.** It writes a `pf` anchor and edits
+`/etc/pf.conf`, restoring the original on removal. It is system-wide while
+armed. See [Network kill switch](https://docs.privacycommand.privacykey.org/kill-switch).
+
+**A monitored run executes untrusted code** on your machine unless you use
+[VM mode](https://docs.privacycommand.privacykey.org/vm-mode).
+
+**Ghidra is third-party.** If you enable decompilation, that's Ghidra's code
+running on your machine under its own terms.
+
+## What a clean report does not mean
+
+privacycommand makes **no claim to detect malware**. Static analysis can be
+defeated by an adversary who wants to hide, and dynamic analysis only observes
+the code paths a run happens to exercise.
+
+A clean report means the signals privacycommand extracts didn't look
+noteworthy. Treat it as evidence, not as a verdict.
+
+## Reporting a vulnerability
+
+Please **don't** open a public issue.
+
+Email **security@privacykey.org**, or use
+[GitHub's private advisory form](https://github.com/privacykey/privacycommand/security/advisories/new).
+We aim to respond within 72 hours.
+
+Especially interested in: anything that lets an unauthorised process reach the
+helper, any path from analysing a malicious bundle to code execution on the
+host, and anything that causes privacycommand to transmit data beyond the calls
+listed above.
+
+# About these docs
+Source: https://docs.privacycommand.privacykey.org/about-these-docs
+
+How this site is written, where it can be wrong, and how to fix it.
+
+## Where this comes from
+
+These pages were written against the privacycommand source at `main` — the
+detectors under `Sources/privacycommandCore/Analysis/`, the helper's XPC
+interface, the `auditctl` command surface, and the project's in-repo
+`ARCHITECTURE.md`, `HELPER.md`, `BUILDING.md` and `GUEST_AGENT.md`.
+
+Where a page describes behaviour, it was checked in the code rather than
+inferred from the README.
+
+## Where it can be wrong
+
+privacycommand is **pre-1.0 and moving**. Detectors get added, the report format
+shifts, and UI labels change. These docs will drift between releases.
+
+Two specific cautions:
+
+- **Screenshots and exact labels** age fastest. Trust the described behaviour
+  over the wording of any button.
+- **The JSON export shape is not stable.** Don't build anything long-lived on it
+  without pinning a version.
+
+If a page contradicts the app, the app is right and the page is a bug.
+
+## Fixing something
+
+Small corrections: use **Suggest edits** at the bottom of any page.
+
+Anything larger, or if you're unsure: open an issue at
+[github.com/privacykey/privacycommand/issues](https://github.com/privacykey/privacycommand/issues)
+and say which page and what's wrong.
+
+If a page makes a claim about the **security posture** that isn't true — the
+outbound calls, what the helper can do, what the kill switch touches — that's
+not a docs typo, it's a security issue. Please follow
+[Security](https://docs.privacycommand.privacykey.org/security) and don't open a public issue.
+
+## Reading these docs with an AI assistant
+
+This site follows the [llms.txt](https://llmstxt.org) convention, so you can hand
+it to whichever assistant you use and ask it to walk you through an install or a
+report:
+
+- `/llms.txt` is an index of every page with a one-line summary.
+- `/llms-full.txt` is the whole site in one Markdown file — the thing to paste in
+  when you want the assistant to have everything.
+- Appending `.md` to any page's URL returns that page as plain Markdown.
+
+Both files are generated from these pages, so they carry exactly the same
+caveats as the pages themselves.
+
+## Conventions
+
+- **privacycommand** is one word, all lowercase, including at the start of a
+  sentence. So is **privacykey**.
+- Commands are shown as you'd type them.
+- Where a feature is optional, the page says so and says what you lose without
+  it. Nothing here should imply you need the helper, Ghidra, or a VM to get
+  value from the tool.
+
+# Developing privacycommand
+Source: https://docs.privacycommand.privacykey.org/develop/overview
+
+Where the code lives, and the shape of a contribution.
+
+privacycommand is Swift: a SwiftUI app over a pure-Swift analyzer library, plus
+a privileged helper, a CLI, and an agent that runs inside a VM.
+
+## The layout
+
+| Target | Path | Role |
+|---|---|---|
+| `privacycommandCore` | `Sources/privacycommandCore/` | The analyzer. No SwiftUI and no window, so it runs from the CLI, the tests, the GUI and the helper alike |
+| `privacycommand` | `Sources/privacycommand/` | The SwiftUI app — views and view-models only |
+| `privacycommandHelper` | the `privacycommandHelper` directory | Privileged XPC service, installed via `SMAppService.daemon` |
+| `privacycommandGuestProtocol` | `Sources/privacycommandGuestProtocol/` | Wire format shared by host and guest. Zero dependencies, so the agent builds without compiling Core |
+| `privacycommandGuestAgent` | `Sources/privacycommandGuestAgent/` | The `privacycommand-guest` daemon that runs inside a VM |
+| `auditctl` / `auditctlKit` | `Sources/auditctl*/` | The [CLI](https://docs.privacycommand.privacykey.org/auditctl), and the smallest end-to-end exercise of the analyzer |
+
+The split is deliberate: a change to the analyzer can be tested with
+`swift test` in seconds rather than by launching a GUI.
+
+The whole *analysis* half of Core has no UI dependency at all. Three files under
+`Monitoring/` do import AppKit behind `#if canImport(AppKit)` — `DynamicMonitor`
+launches the inspected bundle via `NSWorkspace`, `LiveProbeMonitor` polls
+`NSPasteboard.general.changeCount`, and `VMHostDetection` drives the VM
+front-ends. Those are on the dynamic path and can't do their jobs without it.
+If you're adding a detector under `Analysis/`, keep it free of both.
+
+> **Note**
+>
+> There is a second, stale copy of the helper sources under
+> `Sources/privacycommandHelper/`. The Xcode project builds the top-level
+> `privacycommandHelper` directory — that's the one that ships. Check which you
+> are editing.
+
+## Where to start
+
+- **A new detector** — [Contributing](https://docs.privacycommand.privacykey.org/develop/contributing) has the contract,
+  including the Knowledge Base entry that has to come with it.
+- **How the pieces fit** — [Architecture](https://docs.privacycommand.privacykey.org/develop/architecture).
+- **VM mode internals** — [Guest agent](https://docs.privacycommand.privacykey.org/develop/guest-agent).
+- **Getting it building** — [Build from source](https://docs.privacycommand.privacykey.org/develop/build-from-source).
+
+## Tests
+
+```bash
+cd privacycommand
+swift test
+```
+
+Run this before opening a PR. The Xcode project also carries an XCTest bundle
+for the app target (⌘U).
+
+# Build from source
+Source: https://docs.privacycommand.privacykey.org/develop/build-from-source
+
+Two build paths, and the one signing step you can't skip.
+
+Two parallel paths over the same sources. Xcode builds the GUI; SwiftPM gives
+you a fast loop on the analyzer.
+
+## Xcode — the app
+
+```bash
+git clone https://github.com/privacykey/privacycommand.git
+cd privacycommand/privacycommand
+open privacycommand.xcodeproj
+```
+
+Then, before the first build:
+
+**Step 1: Add the Sparkle dependency**
+
+**File → Add Package Dependencies…** →
+`https://github.com/sparkle-project/Sparkle`, *Up to Next Major* from
+`2.9.1` — that's what the committed project pins. Tick the `Sparkle`
+product on the **privacycommand** target.
+
+**Step 2: Set the app's signing team**
+
+**privacycommand → Signing & Capabilities → Team.** A personal team is fine
+for development; distribution needs a Developer ID.
+
+**Step 3: Match the helper's team to the app's**
+
+**privacycommandHelper → Signing & Capabilities → Team**, set to the *same*
+team.
+
+Two different failures hang off getting this wrong, and only one of them is
+loud. If both targets are team-signed but with *different* teams, the
+helper's `CodeSignValidator` refuses the XPC connection at runtime and every
+privileged feature stops working — obvious, and easy to diagnose. If the
+helper ends up with **no** team at all — unsigned, ad-hoc, or
+"Sign to Run Locally" — the validator has nothing to compare against and
+accepts *every* caller instead, silently. Your build works, and the root
+helper is reachable by any process running as you. See
+[How it protects itself](https://docs.privacycommand.privacykey.org/privileged-helper#how-it-protects-itself).
+
+**Step 4: Build**
+
+⌘B to build, ⌘R to run, ⌘U for the app test bundle.
+
+The app target depends on the helper, so building the app builds the helper
+first and embeds it, along with its LaunchDaemon plist.
+
+App Sandbox is off, Hardened Runtime is on, deployment target is macOS 13.0,
+and distribution is Developer ID plus notarization rather than the App Store.
+
+## SwiftPM — the analyzer and CLI
+
+```bash
+cd privacycommand
+swift build
+swift test
+.build/debug/auditctl /System/Applications/Calculator.app
+```
+
+This builds `privacycommandCore` and [`auditctl`](https://docs.privacycommand.privacykey.org/auditctl). **The SwiftUI app
+is not built this way** — it exists only in the Xcode project.
+
+Use this loop when you're working on detectors. It's much faster than a GUI
+build, and `auditctl` against a known-good system app is the quickest way to
+see whether a change did what you meant.
+
+## How one source tree compiles both ways
+
+App sources use a conditional import:
+
+```swift
+import SwiftUI
+#if SWIFT_PACKAGE
+import privacycommandCore
+#endif
+```
+
+Under SwiftPM, `SWIFT_PACKAGE` is defined and Core is a separate module. Under
+Xcode, everything is one app module and the import is skipped. Test files do the
+same with `@testable import`.
+
+If you add a file that references Core, keep this pattern or the other build
+path breaks.
+
+## Verifying the build
+
+```bash
+APP=$(find ~/Library/Developer/Xcode/DerivedData -path '*Build/Products*/privacycommand.app' -maxdepth 7 -print -quit)
+ls -1 "$APP/Contents/MacOS"
+# privacycommand
+# privacycommandHelper      <- the helper is embedded
+ls -1 "$APP/Contents/Library/LaunchDaemons"
+```
+
+If `privacycommandHelper` is missing from `Contents/MacOS`, the embed phase
+didn't run and nothing privileged will work.
+
+# Contributing
+Source: https://docs.privacycommand.privacykey.org/develop/contributing
+
+The one contract that matters, plus what to run before opening a PR.
+
+Issues and pull requests are welcome.
+
+## Before you open a PR
+
+- **Run the tests.** `swift test` from `privacycommand/`, and confirm they pass.
+- **For UI changes, attach a before/after screenshot.**
+- **For a new analysis signal, add its Knowledge Base entry.** See below.
+
+## The Knowledge Base contract
+
+This is the one convention that isn't negotiable.
+
+privacycommand explains what every finding means in plain English. A raw
+entitlement key or a matched string is not a finding — it becomes one when a
+reader who isn't a macOS internals specialist can tell what it implies.
+
+So **a new detector is not complete without a Knowledge Base entry alongside
+it.** The entry should say what the signal is, why an app might legitimately
+have it, and what would make it concerning.
+
+That last part matters. Most signals are dual-use: anti-analysis checks are
+common in DRM, a launch daemon is reasonable for a VPN client. An entry that
+only says "this is bad" makes the report worse, not better.
+
+## Writing a detector
+
+Detectors live in `Sources/privacycommandCore/Analysis/`. Keep them there, and
+keep them free of AppKit — nothing under `Analysis/` imports it today — so they
+stay testable from `swift test` and usable from [`auditctl`](https://docs.privacycommand.privacykey.org/auditctl).
+
+Useful habits:
+
+- **Prefer evidence over inference.** Report what was found and where. Let the
+  behaviour pass combine signals into findings.
+- **Make it traceable.** Every detection should be able to show what matched.
+  The [telemetry callout](https://docs.privacycommand.privacykey.org/telemetry) shows the matched strings behind every
+  SDK, and new detectors should meet the same bar.
+- **Test against a real bundle.** `auditctl` against a system app is the fastest
+  check that a detector behaves on real input.
+
+## Docs
+
+These docs live in
+[privacykey/docs-privacycommand](https://github.com/privacykey/docs-privacycommand).
+If your change alters user-visible behaviour, the docs change belongs with it.
+
+## Security
+
+Don't open a public issue for a vulnerability — see [Security](https://docs.privacycommand.privacykey.org/security).
+
+# Architecture
+Source: https://docs.privacycommand.privacykey.org/develop/architecture
+
+The targets, why each is separate, and how data moves between them.
+
+One line: **a SwiftUI app drops a bundle onto a pure-Swift analyzer, optionally
+launches the inspected app under a privileged XPC helper for dynamic monitoring,
+and optionally ships a guest agent into a macOS VM to do the same work in
+isolation.**
+
+## The picture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        privacycommand.app                        │
+│  ┌────────────────────┐    ┌────────────────────┐                │
+│  │  privacycommand    │    │ privacycommandCore │  pure Swift,   │
+│  │  (SwiftUI + AppKit)│───▶│    (analyzer)      │  no views      │
+│  └─────────┬──────────┘    └────────────────────┘                │
+│            │ XPC                     ▲ analyze(bundleAt:)        │
+│            ▼                         │                           │
+│  ┌──────────────────────┐            │                           │
+│  │ privacycommandHelper │  root: fs_usage, sfltool, pfctl.       │
+│  │ (SMAppService daemon)│  Validates clients by Team ID.         │
+│  └──────────────────────┘                                        │
+└──────────────────────────────────────────────────────────────────┘
+
+     ┌──────────────────────┐   ┌──────────────────────────┐
+     │ auditctl (CLI)       │   │ privacycommandGuestAgent │
+     │ smallest end-to-end  │   │ runs in a macOS VM,      │
+     │ run of the analyzer  │   │ ships observations back  │
+     └──────────┬───────────┘   └────────────┬─────────────┘
+                │                            │
+                └── privacycommandGuestProtocol ──┘
+                        (zero-dep wire format)
+```
+
+## Why each target is separate
+
+**`privacycommandCore` carries no UI on purpose.** It runs from the CLI, from
+tests, from the GUI, and from the helper. Keeping the views out means a detector
+change is testable in seconds with `swift test`, and that the same analysis code
+runs everywhere rather than being reimplemented per surface. The `Analysis/`
+half imports nothing from AppKit; three files under `Monitoring/` do, because
+launching a bundle, reading the pasteboard, and driving a VM front-end have no
+Foundation equivalent.
+
+**The helper is tiny on purpose.** It exposes only what genuinely needs root:
+version, start/stop file monitor, the BTM dump, install/remove kill switch,
+uninstall. No general run-as-root path. It validates callers by code signature —
+Apple anchor plus matching Team ID — so a binary signed by anyone else can't
+talk to it. That check depends on the helper itself being team-signed; see
+[How it protects itself](https://docs.privacycommand.privacykey.org/privileged-helper#how-it-protects-itself) for what a
+no-team build does instead.
+
+**The guest protocol has zero dependencies on purpose.** The agent has to build
+and run inside a VM without compiling Core, so the wire format lives in its own
+target that both sides import.
+
+**`auditctl` exists partly as a test.** It's the smallest path that exercises
+the analyzer end to end, which makes it the fastest way to notice you broke
+something.
+
+## How an audit flows
+
+**Step 1: Ingest**
+
+A `.app` — or a `.dmg`, mounted and unmounted around the analysis — becomes
+a bundle path.
+
+**Step 2: Static pass**
+
+Roughly forty detectors under `Analysis/` run over the bundle: signing,
+entitlements, Mach-O inspection, string scanning, SDK fingerprinting,
+Privacy Manifest reading, and the rest. Each emits signals.
+
+**Step 3: Classification**
+
+A behaviour pass turns combinations of signals into findings with a risk
+tier. This is what drives the summary and the [batch scan](https://docs.privacycommand.privacykey.org/batch-scan)
+table.
+
+**Step 4: Enrichment**
+
+Optional and network-bound: App Store privacy labels for Mac App Store
+bundles.
+
+**Step 5: Dynamic pass (optional)**
+
+The app is launched under observation. `Monitoring/` collects file events
+(via the helper), network destinations, processes, device access, USB, and
+resource usage — or receives the same from a VM guest.
+
+**Step 6: Report**
+
+Persisted to History, and exportable as JSON, HTML or PDF.
+
+## Reading the source
+
+- `Sources/privacycommandCore/Analysis/` — the detectors, roughly forty files
+- `Sources/privacycommandCore/Monitoring/` — dynamic observation
+- `Sources/privacycommandCore/Classification/` — signals to findings
+- `Sources/privacycommandCore/KnowledgeBase/` — the plain-English explanations
+- `Sources/privacycommandCore/IPC/` — the helper's XPC protocol
+- `Sources/privacycommandCore/Batch/` — fleet scanning
+- `Sources/privacycommandCore/Reporting/` — exports
+
+The repo's own `ARCHITECTURE.md` carries the longer version.
+
+# Guest agent
+Source: https://docs.privacycommand.privacykey.org/develop/guest-agent
+
+The daemon behind VM mode — two binaries on two machines.
+
+[VM mode](https://docs.privacycommand.privacykey.org/vm-mode) is **two binaries on two machines**, not two copies of the
+app.
+
+| Machine | Binary | UI | Role |
+|---|---|---|---|
+| Host | `privacycommand` | Yes | The app you're using. Where results appear |
+| Guest | `privacycommand-guest` | No | A small TCP daemon. Takes commands, ships observations |
+
+You install `privacycommand-guest` inside the VM once. After that you keep
+using privacycommand on your real Mac exactly as before — same window, same
+tabs. Observations from the guest stream into those tabs with a **VM** badge so
+you can tell them apart from anything running on the host.
+
+There is no second copy of the GUI inside the VM.
+
+## The protocol
+
+The host connects to the agent over TCP — port 49374 unless the agent was
+started with `--port` — and exchanges two message types defined in
+`privacycommandGuestProtocol`:
+
+- **`GuestCommand`** — host to guest: start a run, decompile, stop.
+- **`GuestObservation`** — guest to host: the events a monitored run produces.
+
+That target has **zero dependencies** deliberately, so the agent compiles
+without pulling in Core. It's the contract between the two machines, and it's
+the thing to look at first if host and guest disagree.
+
+## Decompiling in the guest
+
+Beyond monitored runs, the agent can decompile an entire app inside the guest
+and stream the reconstructed classes back
+(**Settings → VM agent → Decompile in VM**).
+
+This offloads Ghidra's CPU-heavy analysis onto the VM, so it never runs on your
+real Mac. It needs Ghidra installed **in the guest**, not on the host.
+
+For a large binary this is the difference between your Mac being unusable for
+ten minutes and not noticing at all.
+
+## Practical notes
+
+**The guest needs to be reachable.** The host connects over TCP, so the VM's
+networking has to allow it. Bridged or shared networking generally works;
+fully isolated networking by definition does not — and if you've taken the
+guest offline deliberately to contain an app, you've also cut the agent's link.
+
+**Snapshot before you run anything.** The value of VM mode is that the guest is
+disposable. A clean snapshot taken before the first audit is what makes that
+true.
+
+**VM detection is real.** Software that looks for a hypervisor may behave
+differently, and privacycommand's own
+[anti-analysis detector](https://docs.privacycommand.privacykey.org/static-analysis) will often tell you in advance that
+a bundle contains those checks.
+
+The repo's `docs/GUEST_AGENT.md` carries the full protocol detail and setup
+steps.
