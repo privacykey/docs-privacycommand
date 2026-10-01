@@ -3,8 +3,8 @@ title: Static analysis
 description: "What privacycommand extracts from a bundle without running it — the bulk of the report."
 ---
 
-Static analysis reads the bundle on disk. Nothing executes, so this is the part
-you can safely run against something you don't trust at all.
+Static analysis reads the bundle on disk without executing it, so you can run it
+against a bundle you don't trust.
 
 It is also where most of the report comes from. Roughly forty detectors run over
 a bundle; this page groups them by the question they answer.
@@ -19,8 +19,8 @@ a bundle; this page groups them by the question they answer.
     recognise.
   </Accordion>
   <Accordion title="Notarization" icon="stamp">
-    A deep dive rather than a yes/no: whether the ticket is stapled, what
-    `spctl` says about it, and the SHA-256 of the bundle. Every relaxation is
+    This check reports whether the ticket is stapled, what `spctl` says about
+    it, and the SHA-256 of the bundle. Every relaxation is
     reported with the entitlement or flag responsible.
   </Accordion>
   <Accordion title="Provenance" icon="tag">

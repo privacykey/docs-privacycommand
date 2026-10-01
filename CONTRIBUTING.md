@@ -24,7 +24,7 @@ npm run llms
 ```
 
 This validates that every page in `docs.json` exists and every page on disk is
-reachable from the navigation. CI additionally runs a link check.
+reachable from the navigation. CI also runs a link check.
 
 ## Conventions
 
