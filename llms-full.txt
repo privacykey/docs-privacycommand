@@ -41,7 +41,7 @@ actually links. Start at [Static analysis](https://docs.privacycommand.privacyke
 **Dynamic analysis** means launching the app under observation and watching
 what it does: file events, network destinations, child processes, pasteboard
 and camera and microphone access. That needs the
-[privileged helper](https://docs.privacycommand.privacykey.org/privileged-helper), and for anything you genuinely don't
+[privileged helper](https://docs.privacycommand.privacykey.org/privileged-helper), and for anything you don't
 trust, it should happen inside [VM mode](https://docs.privacycommand.privacykey.org/vm-mode).
 
 ## What it won't do
@@ -791,7 +791,7 @@ Source: https://docs.privacycommand.privacykey.org/vm-mode
 
 Run the analysis inside a disposable macOS VM, and ship the observations back to your Mac.
 
-For a bundle you genuinely don't trust, running it on your own machine is the
+For a bundle you don't trust, running it on your own machine is the
 wrong move — even under observation. VM mode moves the execution into a
 disposable macOS guest and streams the results back.
 
