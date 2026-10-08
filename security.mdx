@@ -26,7 +26,7 @@ last two only when you ask for a feature that fetches something:
 | **App Store privacy labels** | Analysing a Mac App Store app | The inspected app's bundle ID, to Apple's lookup endpoint and then that app's App Store product page. Nothing about you |
 | **Sparkle appcast** | Checking for updates — **off by default** | A request to `privacykey.github.io` |
 | **The inspected app's own appcast** | You click **Preview next version** on a Sparkle-distributed app — see [Compare runs](/compare-runs) | A request to the *vendor's* feed URL, then a download of the release it points at. HTTPS only, capped at 600 MB, analysed but never executed |
-| **`brew fetch`** | [`auditctl preview --fetch`](/auditctl) | Homebrew downloads the incoming cask artifact into its own cache, from wherever the cask points |
+| **`brew fetch`** | [`privacycommand preview --fetch`](/cli) | Homebrew downloads the incoming cask artifact into its own cache, from wherever the cask points |
 
 **All analysis runs locally.** The inspected bundle's contents never leave your
 machine, and privacycommand never uploads a report anywhere. The last two rows

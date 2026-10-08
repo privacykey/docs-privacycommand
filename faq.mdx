@@ -41,12 +41,12 @@ description: "Short answers to the questions that come up first."
 
     Two more only happen when you ask for a feature that fetches something:
     **Preview next version** reads the *inspected* app's own update feed and
-    downloads the release it points at, and `auditctl preview --fetch` has
+    downloads the release it points at, and `privacycommand preview --fetch` has
     Homebrew download the incoming cask. Full detail in [Security](/security).
   </Accordion>
   <Accordion title="Can I audit an app I haven't installed?" icon="download">
     Yes. Drop a `.dmg` on it, or use
-    [`auditctl preview --fetch`](/auditctl) to pull an incoming Homebrew cask
+    [`privacycommand preview --fetch`](/cli) to pull an incoming Homebrew cask
     build and diff it against what you have.
   </Accordion>
   <Accordion title="Why does an app show findings after an update to privacycommand?" icon="refresh">
@@ -61,7 +61,7 @@ description: "Short answers to the questions that come up first."
     Yes — macOS 13 or newer, Apple Silicon or Intel.
   </Accordion>
   <Accordion title="Can I run it in CI?" icon="terminal">
-    Yes, via [`auditctl`](/auditctl). Use `--json` for machine-readable output
+    Yes, via the [`privacycommand` command-line tool](/cli). Use `--json` for machine-readable output
     and `--warn-exit` to fail a build on findings. Run bare with stdout
     redirected it prints usage rather than opening the interactive browser, so
     it's safe in a pipeline.
