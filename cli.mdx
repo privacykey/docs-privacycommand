@@ -73,6 +73,39 @@ swift build -c release
 
 [Build from source](/develop/build-from-source) has the details.
 
+## Tab completion
+
+`privacycommand` completes its subcommands and options, installed app names,
+risk tiers, and the outdated casks `preview` would look at, in zsh, bash and
+fish.
+
+A Homebrew install sets this up for you. If completion already works for other
+Homebrew commands in your shell, it works for this one too.
+
+Otherwise, add one line for your shell. `privacycommand completion --help`
+lists them as well.
+
+**zsh** — in `~/.zshrc`, after `autoload -Uz compinit && compinit`:
+
+```bash
+eval "$(privacycommand completion zsh)"
+```
+
+**bash** — in `~/.bash_profile`. This works with the bash 3.2 that ships with
+macOS:
+
+```bash
+eval "$(privacycommand completion bash)"
+```
+
+**fish** — run once:
+
+```bash
+privacycommand completion fish > ~/.config/fish/completions/privacycommand.fish
+```
+
+Open a new terminal window afterwards.
+
 ## Usage
 
 ```
@@ -81,6 +114,7 @@ privacycommand <target>              static audit of one app (name or path)
 privacycommand audit <target>        same, explicit
 privacycommand -i, interactive       force the interactive browser
 privacycommand preview [options]     preview apps before you update them
+privacycommand completion <shell>    print a tab-completion script (zsh, bash, fish)
 ```
 
 `<target>` is either a path to a `.app` or a substring of an app name, so

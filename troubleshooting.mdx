@@ -123,6 +123,14 @@ description: "The failures people actually hit, and what to do about each."
     ejected. Drag the app to `/Applications`, open it from there, and choose
     the menu item again.
   </Accordion>
+  <Accordion title="Tab completion doesn't work in zsh" icon="keyboard">
+    `compinit` has to run before the `eval "$(privacycommand completion zsh)"`
+    line in `~/.zshrc`; without it there's nothing to register with. With a
+    Homebrew install, zsh only finds Homebrew's completions if its
+    `share/zsh/site-functions` folder is on `fpath` before `compinit` runs.
+    If you add a line now and nothing changes, zsh may be using a cached
+    completion dump: delete `~/.zcompdump` and open a new terminal window.
+  </Accordion>
   <Accordion title="preview says Homebrew was not found" icon="terminal">
     `privacycommand preview` looks for `brew` at `$HOMEBREW_PREFIX/bin/brew` first, if
     that variable is set, then `/opt/homebrew/bin/brew` and
