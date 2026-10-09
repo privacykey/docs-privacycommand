@@ -61,7 +61,7 @@
             "pages": [
               "batch-scan",
               "compare-runs",
-              "auditctl",
+              "cli",
               "reports"
             ]
           },
@@ -149,6 +149,12 @@
       "redirect": false
     }
   },
+  "redirects": [
+    {
+      "source": "/auditctl",
+      "destination": "/cli"
+    }
+  ],
   "seo": {
     "metatags": {
       "og:type": "website",

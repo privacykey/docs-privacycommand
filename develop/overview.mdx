@@ -15,7 +15,7 @@ a privileged helper, a CLI, and an agent that runs inside a VM.
 | `privacycommandHelper` | the `privacycommandHelper` directory | Privileged XPC service, installed via `SMAppService.daemon` |
 | `privacycommandGuestProtocol` | `Sources/privacycommandGuestProtocol/` | Wire format shared by host and guest. Zero dependencies, so the agent builds without compiling Core |
 | `privacycommandGuestAgent` | `Sources/privacycommandGuestAgent/` | The `privacycommand-guest` daemon that runs inside a VM |
-| `auditctl` / `auditctlKit` | `Sources/auditctl*/` | The [CLI](/auditctl), and the smallest end-to-end exercise of the analyzer |
+| `privacycommandCLI` / `privacycommandCLIKit` | `Sources/privacycommandCLI*/` | The [CLI](/cli), built as `privacycommand` and embedded in the app, and the smallest end-to-end exercise of the analyzer |
 
 The split is deliberate: a change to the analyzer can be tested with
 `swift test` in seconds rather than by launching a GUI.

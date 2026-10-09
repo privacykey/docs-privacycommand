@@ -27,7 +27,8 @@ at login — and, if you let it, what it reaches for while it runs.
 > machine, and no report is ever uploaded. privacycommand does make a handful of
 > outbound calls — reverse DNS, App Store privacy labels, its own update feed,
 > and, only if you ask it to fetch a pending update, that vendor's feed and
-> download or a `brew fetch` of the incoming cask. All five are enumerated in
+> download, a `brew fetch` of the incoming cask, or the `brew upgrade` you ask
+> `privacycommand upgrade` to run. All six are enumerated in
 > [Security](https://docs.privacycommand.privacykey.org/security).
 
 ## The two halves
@@ -68,9 +69,9 @@ Drop a bundle in and read what comes back.
 
 Triage every app in `/Applications` at once.
 
-**[Script it](https://docs.privacycommand.privacykey.org/auditctl)**
+**[Script it](https://docs.privacycommand.privacykey.org/cli)**
 
-`auditctl`, the CLI over the same analyzer.
+The `privacycommand` command-line tool, over the same analyzer.
 
 ## Requirements
 
@@ -126,6 +127,13 @@ open privacycommand.xcodeproj
 You'll need to add the Sparkle package dependency and set a signing team before
 the first build — the full walkthrough is in
 [Build from source](https://docs.privacycommand.privacykey.org/develop/build-from-source).
+
+## Command-line tool
+
+The app also carries `privacycommand`, a command-line tool over the same
+analyzer, from the first release after 0.1.5. A Homebrew install puts it on your
+`PATH` for you. With the disk image, choose **privacycommand ▸ Install Command
+Line Tool…** once the app is in `/Applications`. See [Command line](https://docs.privacycommand.privacykey.org/cli).
 
 ## First launch
 
@@ -970,7 +978,7 @@ JSON, HTML and PDF exports cover one bundle at a time.
 ## From the command line
 
 The same triage is available headless through
-[`auditctl preview --all-apps`](https://docs.privacycommand.privacykey.org/auditctl), which is the better route for CI or
+[`privacycommand preview --all-apps`](https://docs.privacycommand.privacykey.org/cli), which is the better route for CI or
 a scheduled job.
 
 # Compare runs
@@ -1025,55 +1033,150 @@ change on every release. Focus on the categories above.
 ## From the command line
 
 ```bash
-swift run -c release auditctl preview --fetch <cask>
+privacycommand preview --fetch <cask>
 ```
 
 does the same before-and-after against an incoming Homebrew cask build — see
-[auditctl](https://docs.privacycommand.privacykey.org/auditctl), including the note about Gatekeeper and freshly
+[Command line](https://docs.privacycommand.privacykey.org/cli), including the note about Gatekeeper and freshly
 downloaded artifacts.
 
-# auditctl (CLI)
-Source: https://docs.privacycommand.privacykey.org/auditctl
+# Command line
+Source: https://docs.privacycommand.privacykey.org/cli
 
-The same analyzer, on the command line — for scripting, CI, and previewing updates before you take them.
+The privacycommand command-line tool: the same analyzer for scripting, CI, and previewing updates before you take them.
 
-`auditctl` is a small CLI over the same analyzer the app uses. Useful for
-scripting, for CI, and for the one thing the GUI can't easily do: checking an
-update *before* you install it.
+The app comes with a command-line tool of the same name, `privacycommand`. It
+runs the same analyzer the app uses. Reach for it when scripting, in CI, and
+for the one thing the GUI can't easily do: checking an update *before* you
+install it.
 
-## Building it
+## Installing it
 
-`auditctl` is not shipped in the DMG. Build it from a checkout:
+The tool lives inside the app, at
+`privacycommand.app/Contents/Helpers/privacycommand`. It is signed and
+notarized with the app and updates whenever the app does. Installing it only
+puts a link to that copy on your `PATH`.
+
+> **Note**
+>
+> The app carries the command-line tool from the first release after 0.1.5. On
+> 0.1.5 or earlier, [build it from source](#building-it-from-source).
+
+### With Homebrew
+
+If you installed the app with Homebrew, there's nothing to do. The cask links
+`privacycommand` into Homebrew's `bin` folder and removes the link when you
+uninstall it:
+
+```bash
+brew install --cask privacykey/tap/privacycommand
+privacycommand --version
+```
+
+### From the disk image
+
+1. Drag privacycommand into `/Applications` and open it from there.
+2. Choose **privacycommand ▸ Install Command Line Tool…**.
+
+This links the tool into `/usr/local/bin`. On most Macs that folder needs
+administrator rights. When it does, the alert shows the equivalent command to
+run in Terminal, with a **Copy Command** button. It looks like this:
+
+```bash
+sudo mkdir -p /usr/local/bin && sudo ln -sf /Applications/privacycommand.app/Contents/Helpers/privacycommand /usr/local/bin/privacycommand
+```
+
+Open a new Terminal window and run `privacycommand --help` to check it worked.
+
+Once the link exists, the same menu item reads **Uninstall Command Line
+Tool…** and removes it again. When that needs administrator rights too, it
+shows `sudo rm /usr/local/bin/privacycommand` to run instead.
+
+The menu item is careful about what it touches:
+
+- It won't link from the disk image or from a copy macOS is running from a
+  temporary location. That link would break as soon as the image is ejected,
+  so it asks you to move the app first.
+- If Homebrew has already linked the tool, it says so rather than adding a
+  second link.
+- It replaces a link that points at an older or moved copy of the app.
+- It never removes or overwrites a file or link it didn't create. Anything else
+  at `/usr/local/bin/privacycommand` is reported and left alone.
+
+### Building it from source
+
+For contributors, or on 0.1.5 and earlier:
 
 ```bash
 cd privacycommand
 swift build -c release
-swift run -c release auditctl --help
+.build/release/privacycommand --help
 ```
+
+[Build from source](https://docs.privacycommand.privacykey.org/develop/build-from-source) has the details.
+
+## Tab completion
+
+`privacycommand` completes its subcommands and options, installed app names,
+risk tiers, and the outdated casks `preview` and `upgrade` would look at, in
+zsh, bash and fish.
+
+A Homebrew install sets this up for you. If completion already works for other
+Homebrew commands in your shell, it works for this one too.
+
+Otherwise, add one line for your shell. `privacycommand completion --help`
+lists them as well.
+
+**zsh** — in `~/.zshrc`, after `autoload -Uz compinit && compinit`:
+
+```bash
+eval "$(privacycommand completion zsh)"
+```
+
+**bash** — in `~/.bash_profile`. This works with the bash 3.2 that ships with
+macOS:
+
+```bash
+eval "$(privacycommand completion bash)"
+```
+
+**fish** — run once:
+
+```bash
+privacycommand completion fish > ~/.config/fish/completions/privacycommand.fish
+```
+
+Open a new terminal window afterwards.
 
 ## Usage
 
 ```
-auditctl                       interactive browser (on a terminal)
-auditctl <target>              static audit of one app (name or path)
-auditctl audit <target>        same, explicit
-auditctl -i, interactive       force the interactive browser
-auditctl preview [options]     preview apps before you update them
+privacycommand                       interactive browser (on a terminal)
+privacycommand <target>              static audit of one app (name or path)
+privacycommand audit <target>        same, explicit
+privacycommand -i, interactive       force the interactive browser
+privacycommand preview [options]     preview apps before you update them
+privacycommand upgrade [options]     show what brew upgrade would change, or gate it by risk
+privacycommand completion <shell>    print a tab-completion script (zsh, bash, fish)
 ```
 
 `<target>` is either a path to a `.app` or a substring of an app name, so
-`auditctl fire` will find Firefox.
+`privacycommand fire` will find Firefox.
 
-Run bare on a terminal, `auditctl` opens an interactive browser. With stdin or
-stdout redirected it prints usage instead, which keeps it safe in CI.
+Run bare on a terminal, `privacycommand` opens an interactive browser in the
+terminal, not the app. With stdin or stdout redirected it prints usage instead,
+which keeps it safe in CI. To open the app itself, use
+`open -a privacycommand`.
+
+`privacycommand --version` prints the version of the app it came with.
 
 ### Auditing one app
 
 ```bash
-swift run -c release auditctl /Applications/SomeApp.app
+privacycommand /Applications/SomeApp.app
 ```
 
-Pretty-printed by default, non-zero exit on parse failure. Useful options:
+Pretty-printed by default. Useful options:
 
 | Flag | Effect |
 |---|---|
@@ -1086,7 +1189,14 @@ Pretty-printed by default, non-zero exit on parse failure. Useful options:
 | `--verbose`, `--exact` | As they sound |
 
 There is no risk-tier filter here — `--min-tier` belongs to `preview`, and
-`auditctl` exits 2 on any flag it doesn't recognise.
+`privacycommand` exits 2 on any flag it doesn't recognise.
+
+| Exit code | Meaning |
+|---|---|
+| `0` | The app was analysed |
+| `1` | The analysis failed, or `--warn-exit` found warnings |
+| `2` | Bad arguments, or no installed app matches the name |
+| `4` | The name matches more than one app; the matches are listed |
 
 ## Previewing updates
 
@@ -1094,9 +1204,9 @@ There is no risk-tier filter here — `--min-tier` belongs to `preview`, and
 **outdated Homebrew casks** and audits what you're about to receive:
 
 ```bash
-swift run -c release auditctl preview
-swift run -c release auditctl preview --all-apps --only-noteworthy --min-tier high
-swift run -c release auditctl preview --json
+privacycommand preview
+privacycommand preview --all-apps --only-noteworthy --min-tier high
+privacycommand preview --json
 ```
 
 `brew` is looked for at `$HOMEBREW_PREFIX/bin/brew` if that variable is set,
@@ -1109,32 +1219,41 @@ version you have installed — so you can see what an update *adds* before takin
 it:
 
 ```bash
-swift run -c release auditctl preview --fetch firefox
+privacycommand preview --fetch firefox
 ```
+
+After the apps, it lists what it couldn't analyse: casks that install no app
+(command-line tools, fonts and the like) with the reason, and your outdated
+formulae, so you can see everything `brew upgrade` would touch. Without
+`--greedy` it also names the casks only `brew upgrade --greedy` would update.
 
 | Flag | Effect |
 |---|---|
 | `--all-apps` | Scan everything installed, not just outdated casks |
 | `--apps-dir <path>` | Look somewhere other than `/Applications` |
 | `--fetch` | Download the incoming build and diff it |
+| `--greedy` | Include casks that normally update themselves, which only `brew upgrade --greedy` touches |
+| `--max-risk <limit>` | Mark each cask cleared or held for review against a risk limit, and exit 3 if anything is held — see [below](#upgrading-within-a-risk-limit) |
 | `--only-noteworthy` | Suppress apps with nothing to say |
 | `--min-tier <tier>` | Only report at or above a risk tier — `low`, `medium`, `high` or `critical`. Anything else exits 2 |
 | `--json` | Machine-readable output |
 
 > **Note**
 >
-> **`preview` will not upgrade anything.** It never runs `brew upgrade` and
-> never blocks or delays an update — it will not get between you and your
-> package manager.
+> **`preview` will not upgrade anything.** It never runs `brew upgrade` — that's
+> [`privacycommand upgrade --max-risk`](#upgrading-within-a-risk-limit).
 >
 > It does run `brew`, though. In cask mode — the default — every invocation
-> shells out to `brew outdated --cask --json=v2`; only if that comes back with
-> something outdated does a second call to `brew info --cask --json=v2` follow,
-> so on an up-to-date machine you pay for `outdated` alone. Neither call is
-> timed out. `--fetch` adds `brew fetch --cask <token>`, which downloads the
-> incoming artifact into Homebrew's cache. And it exits 0 on success but 2 on
-> failure, including when Homebrew isn't installed at all. Account for both
-> before you wire it into a shell prompt or a pre-upgrade hook.
+> calls `brew outdated --json=v2`, which covers casks and formulae. Without
+> `--greedy`, a second `brew outdated --cask --greedy --json=v2` finds the casks
+> only a greedy upgrade would add, and if anything is outdated, one
+> `brew info --cask --json=v2` call resolves where each is installed. None of
+> those is timed out. `--fetch` adds `brew --cache --cask <token>` and
+> `brew fetch --cask <token>` for each cask, which download the incoming
+> artifact into Homebrew's cache; those time out after 30 seconds and 10
+> minutes. It exits 0 on success, 2 on failure — including when Homebrew isn't
+> installed — and, with `--max-risk`, 3 when something is held. Account for
+> all of that before you wire it into a shell prompt or a pre-upgrade hook.
 
 ### The `--fetch` caveat
 
@@ -1144,7 +1263,68 @@ difference that is an artefact of the download rather than a real change in the
 app. The output flags this where it applies — read it before drawing
 conclusions.
 
-`.dmg` and `.zip` cask artifacts are understood. `.pkg` is skipped.
+`.dmg`, `.zip` and `.pkg` cask artifacts are understood. A `.pkg` is expanded
+with `pkgutil --expand-full` and the app inside it analysed; it is never
+installed.
+
+## Upgrading within a risk limit
+
+`privacycommand upgrade` is `preview --fetch` with one addition: give it
+`--max-risk` and it applies the upgrades that stay within that limit and holds
+the rest for you to review.
+
+```bash
+privacycommand upgrade                             # report only, like preview --fetch
+privacycommand upgrade --max-risk medium           # upgrade what's medium risk or lower
+privacycommand upgrade --max-risk 40 --dry-run     # show the plan, run nothing
+```
+
+For each outdated cask it downloads the incoming build, analyses it, and
+compares its risk with the limit — a tier (`low`, `medium`, `high`,
+`critical`) or a score from 0 to 100:
+
+- A cask **at or below** the limit is *cleared* and upgraded with
+  `brew upgrade --cask <token>`. Homebrew's auto-update is off for that step,
+  so it installs the build that was just analysed.
+- A cask **above** the limit is *held*. So is one whose incoming build couldn't
+  be downloaded or analysed.
+- On a terminal, each held cask then asks "upgrade anyway?". `--no-input`
+  leaves them held without asking, and is implied when stdin isn't a terminal
+  and with `--json`.
+
+Casks that install no app, and outdated formulae, are neither analysed nor
+upgraded. The footer lists them with the `brew` command to run yourself.
+
+| Flag | Effect |
+|---|---|
+| `--max-risk <limit>` | Upgrade casks whose incoming build is at or below the limit; hold the rest |
+| `--dry-run` | With `--max-risk`: show what would be upgraded and held, without running `brew upgrade` |
+| `--no-input` | With `--max-risk`: don't ask about held casks |
+| `--greedy` | Include casks that normally update themselves |
+| `--min-tier <tier>`, `--only-noteworthy` | As for `preview`. Not with `--max-risk`, which judges every cask |
+| `--json` | Machine-readable output; `brew`'s own output goes to stderr |
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Everything cleared and was upgraded — or, without `--max-risk`, the report ran |
+| `1` | A `brew upgrade` failed |
+| `2` | Bad arguments, or Homebrew isn't installed |
+| `3` | One or more casks are held for review |
+
+A daily alias that only stops to ask about riskier apps:
+
+```bash
+alias update='privacycommand upgrade --max-risk medium'
+```
+
+`preview` takes `--max-risk` too, without upgrading anything. It marks each cask
+cleared or held — judged on the incoming build with `--fetch`, otherwise on the
+installed one — and exits 3 if anything is held. So this runs `brew upgrade`
+only when every app clears:
+
+```bash
+privacycommand preview --fetch --max-risk medium && brew upgrade
+```
 
 # Exporting reports
 Source: https://docs.privacycommand.privacykey.org/reports
@@ -1165,13 +1345,13 @@ The complete output — nothing is summarised away. This is the format to keep i
 you're building a record over time, because a future version of privacycommand
 can read an old export even if the UI has moved on.
 
-It's also what you want for scripting — but [`auditctl --json`](https://docs.privacycommand.privacykey.org/auditctl) is
+It's also what you want for scripting — but [`privacycommand --json`](https://docs.privacycommand.privacykey.org/cli) is
 **not** this format. The CLI emits its own flat, summarised, static-only object:
 identity and signing, risk score and tier, privacy keys, capabilities, signals
 and findings, with components reduced to four counts. No events, no bundle
 model, no fidelity notes. Its keys are emitted sorted alphabetically rather than
 grouped, so read them by name and don't rely on position. The two share no
-top-level keys, so a scheduled `auditctl --json` job and a saved GUI export
+top-level keys, so a scheduled `privacycommand --json` job and a saved GUI export
 can't be diffed against each other. Pick one and stay on it.
 
 ## HTML and PDF
@@ -1335,8 +1515,12 @@ expect:
 
 ## Checking your version
 
-The version is in **privacycommand → About**. When filing an issue, include it
-along with your macOS version and whether the helper is installed.
+The version is in **privacycommand → About**, and `privacycommand --version`
+prints the same. When filing an issue, include it along with your macOS version
+and whether the helper is installed.
+
+The [command-line tool](https://docs.privacycommand.privacykey.org/cli) lives inside the app, so updating the app by
+either route updates it too. There's nothing to reinstall.
 
 # Troubleshooting
 Source: https://docs.privacycommand.privacykey.org/troubleshooting
@@ -1449,17 +1633,42 @@ Blocking is by address. An app that re-resolves a hostname to a different IP
 can escape it. For a hard boundary, take the guest offline in
 [VM mode](https://docs.privacycommand.privacykey.org/vm-mode).
 
-## auditctl
+## Command line
+
+**privacycommand: command not found**
+
+The tool is only on your `PATH` once it's linked. A Homebrew install links
+it for you; with the disk image, choose **privacycommand ▸ Install Command
+Line Tool…** and, if the alert shows a `sudo` command, run it in Terminal.
+Then open a new Terminal window, since a running shell can cache the old
+`PATH` lookup. Releases up to 0.1.5 don't carry the tool. See
+[Command line](https://docs.privacycommand.privacykey.org/cli).
+
+**Install Command Line Tool… asks you to move the app**
+
+privacycommand is running from the disk image, or from a copy macOS opened
+in a temporary location. A link into it would break when the image is
+ejected. Drag the app to `/Applications`, open it from there, and choose
+the menu item again.
+
+**Tab completion doesn't work in zsh**
+
+`compinit` has to run before the `eval "$(privacycommand completion zsh)"`
+line in `~/.zshrc`; without it there's nothing to register with. With a
+Homebrew install, zsh only finds Homebrew's completions if its
+`share/zsh/site-functions` folder is on `fpath` before `compinit` runs.
+If you add a line now and nothing changes, zsh may be using a cached
+completion dump: delete `~/.zcompdump` and open a new terminal window.
 
 **preview says Homebrew was not found**
 
-`auditctl preview` looks for `brew` at `$HOMEBREW_PREFIX/bin/brew` first, if
+`privacycommand preview` looks for `brew` at `$HOMEBREW_PREFIX/bin/brew` first, if
 that variable is set, then `/opt/homebrew/bin/brew` and
 `/usr/local/bin/brew`. A Homebrew installed somewhere else is invisible to
 it unless you point the variable at the prefix:
 
 ```bash
-HOMEBREW_PREFIX="$(brew --prefix)" swift run -c release auditctl preview
+HOMEBREW_PREFIX="$(brew --prefix)" privacycommand preview
 ```
 
 Or skip brew entirely with `preview --all-apps`, which reads
@@ -1467,8 +1676,8 @@ Or skip brew entirely with `preview --all-apps`, which reads
 
 **Colour codes in a log file or CI transcript**
 
-Pass `--no-color`, or set `NO_COLOR` in the environment — `auditctl` honours
-both. See [auditctl](https://docs.privacycommand.privacykey.org/auditctl).
+Pass `--no-color`, or set `NO_COLOR` in the environment — `privacycommand`
+honours both. See [Command line](https://docs.privacycommand.privacykey.org/cli).
 
 ## Filing a useful issue
 
@@ -1526,13 +1735,13 @@ updates — which is off by default.
 
 Two more only happen when you ask for a feature that fetches something:
 **Preview next version** reads the *inspected* app's own update feed and
-downloads the release it points at, and `auditctl preview --fetch` has
+downloads the release it points at, and `privacycommand preview --fetch` has
 Homebrew download the incoming cask. Full detail in [Security](https://docs.privacycommand.privacykey.org/security).
 
 **Can I audit an app I haven't installed?**
 
 Yes. Drop a `.dmg` on it, or use
-[`auditctl preview --fetch`](https://docs.privacycommand.privacykey.org/auditctl) to pull an incoming Homebrew cask
+[`privacycommand preview --fetch`](https://docs.privacycommand.privacykey.org/cli) to pull an incoming Homebrew cask
 build and diff it against what you have.
 
 **Why does an app show findings after an update to privacycommand?**
@@ -1551,8 +1760,9 @@ Yes — macOS 14 or newer, Apple Silicon or Intel.
 
 **Can I run it in CI?**
 
-Yes, via [`auditctl`](https://docs.privacycommand.privacykey.org/auditctl). Use `--json` for machine-readable output
-and `--warn-exit` to fail a build on findings. Run bare with stdout
+Yes, via the [`privacycommand` command-line tool](https://docs.privacycommand.privacykey.org/cli). Use `--json` for machine-readable output
+and `--warn-exit` to fail a build on findings. `--max-risk` on `preview` or
+`upgrade` exits 3 when a Homebrew update is riskier than you allow. Run bare with stdout
 redirected it prints usage rather than opening the interactive browser, so
 it's safe in a pipeline.
 
@@ -1580,8 +1790,8 @@ empty.
 
 ## Every outbound call
 
-Five, all narrow. The first three happen on privacycommand's own account; the
-last two only when you ask for a feature that fetches something:
+Six, all narrow. The first three happen on privacycommand's own account; the
+last three only when you ask for a feature that fetches something:
 
 | Call | When | What is sent |
 |---|---|---|
@@ -1589,10 +1799,11 @@ last two only when you ask for a feature that fetches something:
 | **App Store privacy labels** | Analysing a Mac App Store app | The inspected app's bundle ID, to Apple's lookup endpoint and then that app's App Store product page. Nothing about you |
 | **Sparkle appcast** | Checking for updates — **off by default** | A request to `privacykey.github.io` |
 | **The inspected app's own appcast** | You click **Preview next version** on a Sparkle-distributed app — see [Compare runs](https://docs.privacycommand.privacykey.org/compare-runs) | A request to the *vendor's* feed URL, then a download of the release it points at. HTTPS only, capped at 600 MB, analysed but never executed |
-| **`brew fetch`** | [`auditctl preview --fetch`](https://docs.privacycommand.privacykey.org/auditctl) | Homebrew downloads the incoming cask artifact into its own cache, from wherever the cask points |
+| **`brew fetch`** | [`privacycommand preview --fetch`](https://docs.privacycommand.privacykey.org/cli) or `privacycommand upgrade` | Homebrew downloads the incoming cask artifact into its own cache, from wherever the cask points |
+| **`brew upgrade`** | [`privacycommand upgrade --max-risk`](https://docs.privacycommand.privacykey.org/cli#upgrading-within-a-risk-limit), for the casks that clear the limit | Homebrew installs the new version, as if you had run `brew upgrade --cask` yourself. Its auto-update is off for that step, so it installs the build that was just analysed |
 
 **All analysis runs locally.** The inspected bundle's contents never leave your
-machine, and privacycommand never uploads a report anywhere. The last two rows
+machine, and privacycommand never uploads a report anywhere. The last three rows
 are downloads *into* your machine, not uploads out of it.
 
 ## The privileged helper
@@ -1655,7 +1866,7 @@ How this site is written, where it can be wrong, and how to fix it.
 
 These pages were written against the privacycommand source at `main` — the
 detectors under `Sources/privacycommandCore/Analysis/`, the helper's XPC
-interface, the `auditctl` command surface, and the project's in-repo
+interface, the `privacycommand` command-line surface, and the project's in-repo
 `ARCHITECTURE.md`, `HELPER.md`, `BUILDING.md` and `GUEST_AGENT.md`.
 
 Where a page describes behaviour, it was checked in the code rather than
@@ -1728,7 +1939,7 @@ a privileged helper, a CLI, and an agent that runs inside a VM.
 | `privacycommandHelper` | the `privacycommandHelper` directory | Privileged XPC service, installed via `SMAppService.daemon` |
 | `privacycommandGuestProtocol` | `Sources/privacycommandGuestProtocol/` | Wire format shared by host and guest. Zero dependencies, so the agent builds without compiling Core |
 | `privacycommandGuestAgent` | `Sources/privacycommandGuestAgent/` | The `privacycommand-guest` daemon that runs inside a VM |
-| `auditctl` / `auditctlKit` | `Sources/auditctl*/` | The [CLI](https://docs.privacycommand.privacykey.org/auditctl), and the smallest end-to-end exercise of the analyzer |
+| `privacycommandCLI` / `privacycommandCLIKit` | `Sources/privacycommandCLI*/` | The [CLI](https://docs.privacycommand.privacykey.org/cli), built as `privacycommand` and embedded in the app, and the smallest end-to-end exercise of the analyzer |
 
 The split is deliberate: a change to the analyzer can be tested with
 `swift test` in seconds rather than by launching a GUI.
@@ -1815,7 +2026,10 @@ helper is reachable by any process running as you. See
 ⌘B to build, ⌘R to run, ⌘U for the app test bundle.
 
 The app target depends on the helper, so building the app builds the helper
-first and embeds it, along with its LaunchDaemon plist.
+first and embeds it, along with its LaunchDaemon plist. An **Embed command-line
+tool** build phase also builds the `privacycommand` CLI with SwiftPM, stamps the
+app's version into it, and signs it into `Contents/Helpers/privacycommand` —
+the copy that Homebrew and **Install Command Line Tool…** link onto `PATH`.
 
 App Sandbox is off, Hardened Runtime is on, deployment target is macOS 14.0,
 and distribution is Developer ID plus notarization rather than the App Store.
@@ -1826,14 +2040,14 @@ and distribution is Developer ID plus notarization rather than the App Store.
 cd privacycommand
 swift build
 swift test
-.build/debug/auditctl /System/Applications/Calculator.app
+.build/debug/privacycommand /System/Applications/Calculator.app
 ```
 
-This builds `privacycommandCore` and [`auditctl`](https://docs.privacycommand.privacykey.org/auditctl). **The SwiftUI app
+This builds `privacycommandCore` and the [`privacycommand` CLI](https://docs.privacycommand.privacykey.org/cli). **The SwiftUI app
 is not built this way** — it exists only in the Xcode project.
 
 Use this loop when you're working on detectors. It's much faster than a GUI
-build, and `auditctl` against a known-good system app is the quickest way to
+build, and `.build/debug/privacycommand` against a known-good system app is the quickest way to
 see whether a change did what you meant.
 
 ## How one source tree compiles both ways
@@ -1900,7 +2114,7 @@ only says "this is bad" makes the report worse, not better.
 
 Detectors live in `Sources/privacycommandCore/Analysis/`. Keep them there, and
 keep them free of AppKit — nothing under `Analysis/` imports it today — so they
-stay testable from `swift test` and usable from [`auditctl`](https://docs.privacycommand.privacykey.org/auditctl).
+stay testable from `swift test` and usable from the [CLI](https://docs.privacycommand.privacykey.org/cli).
 
 Useful habits:
 
@@ -1909,7 +2123,7 @@ Useful habits:
 - **Make it traceable.** Every detection should be able to show what matched.
   The [telemetry callout](https://docs.privacycommand.privacykey.org/telemetry) shows the matched strings behind every
   SDK, and new detectors should meet the same bar.
-- **Test against a real bundle.** `auditctl` against a system app is the fastest
+- **Test against a real bundle.** `.build/debug/privacycommand` against a system app is the fastest
   check that a detector behaves on real input.
 
 ## Docs
@@ -1950,7 +2164,7 @@ isolation.**
 └──────────────────────────────────────────────────────────────────┘
 
      ┌──────────────────────┐   ┌──────────────────────────┐
-     │ auditctl (CLI)       │   │ privacycommandGuestAgent │
+     │ privacycommand (CLI) │   │ privacycommandGuestAgent │
      │ smallest end-to-end  │   │ runs in a macOS VM,      │
      │ run of the analyzer  │   │ ships observations back  │
      └──────────┬───────────┘   └────────────┬─────────────┘
@@ -1981,7 +2195,7 @@ no-team build does instead.
 and run inside a VM without compiling Core, so the wire format lives in its own
 target that both sides import.
 
-**`auditctl` exists partly as a test.** It's the smallest path that exercises
+**The `privacycommand` CLI exists partly as a test.** It's the smallest path that exercises
 the analyzer end to end, which makes it the fastest way to notice you broke
 something.
 

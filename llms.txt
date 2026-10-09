@@ -30,7 +30,7 @@ Site notice: privacycommand is pre-1.0 and under active development — the repo
 
 - [Batch scan](https://docs.privacycommand.privacykey.org/batch-scan.md): Triage a folder — or every app you have installed — in one pass.
 - [Compare runs](https://docs.privacycommand.privacykey.org/compare-runs.md): Diff two saved reports, or an update against the version you already have.
-- [auditctl (CLI)](https://docs.privacycommand.privacykey.org/auditctl.md): The same analyzer, on the command line — for scripting, CI, and previewing updates before you take them.
+- [Command line](https://docs.privacycommand.privacykey.org/cli.md): The privacycommand command-line tool: the same analyzer for scripting, CI, and previewing updates before you take them.
 - [Exporting reports](https://docs.privacycommand.privacykey.org/reports.md): JSON, HTML, and PDF — which format to reach for.
 
 ## Guide / Operate

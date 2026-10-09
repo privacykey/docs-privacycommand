@@ -26,7 +26,7 @@ isolation.**
 └──────────────────────────────────────────────────────────────────┘
 
      ┌──────────────────────┐   ┌──────────────────────────┐
-     │ auditctl (CLI)       │   │ privacycommandGuestAgent │
+     │ privacycommand (CLI) │   │ privacycommandGuestAgent │
      │ smallest end-to-end  │   │ runs in a macOS VM,      │
      │ run of the analyzer  │   │ ships observations back  │
      └──────────┬───────────┘   └────────────┬─────────────┘
@@ -57,7 +57,7 @@ no-team build does instead.
 and run inside a VM without compiling Core, so the wire format lives in its own
 target that both sides import.
 
-**`auditctl` exists partly as a test.** It's the smallest path that exercises
+**The `privacycommand` CLI exists partly as a test.** It's the smallest path that exercises
 the analyzer end to end, which makes it the fastest way to notice you broke
 something.
 

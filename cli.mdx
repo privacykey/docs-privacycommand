@@ -1,0 +1,285 @@
+---
+title: Command line
+description: "The privacycommand command-line tool: the same analyzer for scripting, CI, and previewing updates before you take them."
+---
+
+The app comes with a command-line tool of the same name, `privacycommand`. It
+runs the same analyzer the app uses. Reach for it when scripting, in CI, and
+for the one thing the GUI can't easily do: checking an update *before* you
+install it.
+
+## Installing it
+
+The tool lives inside the app, at
+`privacycommand.app/Contents/Helpers/privacycommand`. It is signed and
+notarized with the app and updates whenever the app does. Installing it only
+puts a link to that copy on your `PATH`.
+
+<Note>
+  The app carries the command-line tool from the first release after 0.1.5. On
+  0.1.5 or earlier, [build it from source](#building-it-from-source).
+</Note>
+
+### With Homebrew
+
+If you installed the app with Homebrew, there's nothing to do. The cask links
+`privacycommand` into Homebrew's `bin` folder and removes the link when you
+uninstall it:
+
+```bash
+brew install --cask privacykey/tap/privacycommand
+privacycommand --version
+```
+
+### From the disk image
+
+1. Drag privacycommand into `/Applications` and open it from there.
+2. Choose **privacycommand ▸ Install Command Line Tool…**.
+
+This links the tool into `/usr/local/bin`. On most Macs that folder needs
+administrator rights. When it does, the alert shows the equivalent command to
+run in Terminal, with a **Copy Command** button. It looks like this:
+
+```bash
+sudo mkdir -p /usr/local/bin && sudo ln -sf /Applications/privacycommand.app/Contents/Helpers/privacycommand /usr/local/bin/privacycommand
+```
+
+Open a new Terminal window and run `privacycommand --help` to check it worked.
+
+Once the link exists, the same menu item reads **Uninstall Command Line
+Tool…** and removes it again. When that needs administrator rights too, it
+shows `sudo rm /usr/local/bin/privacycommand` to run instead.
+
+The menu item is careful about what it touches:
+
+- It won't link from the disk image or from a copy macOS is running from a
+  temporary location. That link would break as soon as the image is ejected,
+  so it asks you to move the app first.
+- If Homebrew has already linked the tool, it says so rather than adding a
+  second link.
+- It replaces a link that points at an older or moved copy of the app.
+- It never removes or overwrites a file or link it didn't create. Anything else
+  at `/usr/local/bin/privacycommand` is reported and left alone.
+
+### Building it from source
+
+For contributors, or on 0.1.5 and earlier:
+
+```bash
+cd privacycommand
+swift build -c release
+.build/release/privacycommand --help
+```
+
+[Build from source](/develop/build-from-source) has the details.
+
+## Tab completion
+
+`privacycommand` completes its subcommands and options, installed app names,
+risk tiers, and the outdated casks `preview` and `upgrade` would look at, in
+zsh, bash and fish.
+
+A Homebrew install sets this up for you. If completion already works for other
+Homebrew commands in your shell, it works for this one too.
+
+Otherwise, add one line for your shell. `privacycommand completion --help`
+lists them as well.
+
+**zsh** — in `~/.zshrc`, after `autoload -Uz compinit && compinit`:
+
+```bash
+eval "$(privacycommand completion zsh)"
+```
+
+**bash** — in `~/.bash_profile`. This works with the bash 3.2 that ships with
+macOS:
+
+```bash
+eval "$(privacycommand completion bash)"
+```
+
+**fish** — run once:
+
+```bash
+privacycommand completion fish > ~/.config/fish/completions/privacycommand.fish
+```
+
+Open a new terminal window afterwards.
+
+## Usage
+
+```
+privacycommand                       interactive browser (on a terminal)
+privacycommand <target>              static audit of one app (name or path)
+privacycommand audit <target>        same, explicit
+privacycommand -i, interactive       force the interactive browser
+privacycommand preview [options]     preview apps before you update them
+privacycommand upgrade [options]     show what brew upgrade would change, or gate it by risk
+privacycommand completion <shell>    print a tab-completion script (zsh, bash, fish)
+```
+
+`<target>` is either a path to a `.app` or a substring of an app name, so
+`privacycommand fire` will find Firefox.
+
+Run bare on a terminal, `privacycommand` opens an interactive browser in the
+terminal, not the app. With stdin or stdout redirected it prints usage instead,
+which keeps it safe in CI. To open the app itself, use
+`open -a privacycommand`.
+
+`privacycommand --version` prints the version of the app it came with.
+
+### Auditing one app
+
+```bash
+privacycommand /Applications/SomeApp.app
+```
+
+Pretty-printed by default. Useful options:
+
+| Flag | Effect |
+|---|---|
+| `--json` | Machine-readable output |
+| `--short` | Condensed summary |
+| `--tree` | Tree view of the bundle |
+| `--warnings` | Findings only |
+| `--warn-exit` | Non-zero exit when warnings are present — the one you want in CI |
+| `--no-color` | Plain output. Setting `NO_COLOR` in the environment does the same |
+| `--verbose`, `--exact` | As they sound |
+
+There is no risk-tier filter here — `--min-tier` belongs to `preview`, and
+`privacycommand` exits 2 on any flag it doesn't recognise.
+
+| Exit code | Meaning |
+|---|---|
+| `0` | The app was analysed |
+| `1` | The analysis failed, or `--warn-exit` found warnings |
+| `2` | Bad arguments, or no installed app matches the name |
+| `4` | The name matches more than one app; the matches are listed |
+
+## Previewing updates
+
+`preview` is the interesting subcommand. With no arguments it looks at your
+**outdated Homebrew casks** and audits what you're about to receive:
+
+```bash
+privacycommand preview
+privacycommand preview --all-apps --only-noteworthy --min-tier high
+privacycommand preview --json
+```
+
+`brew` is looked for at `$HOMEBREW_PREFIX/bin/brew` if that variable is set,
+then `/opt/homebrew/bin/brew` and `/usr/local/bin/brew`. If none of them is
+executable, `preview` exits 2 and says so — `--all-apps` skips Homebrew
+entirely and reads `/Applications` and `~/Applications` directly.
+
+With `--fetch`, it downloads the incoming cask build and diffs it against the
+version you have installed — so you can see what an update *adds* before taking
+it:
+
+```bash
+privacycommand preview --fetch firefox
+```
+
+After the apps, it lists what it couldn't analyse: casks that install no app
+(command-line tools, fonts and the like) with the reason, and your outdated
+formulae, so you can see everything `brew upgrade` would touch. Without
+`--greedy` it also names the casks only `brew upgrade --greedy` would update.
+
+| Flag | Effect |
+|---|---|
+| `--all-apps` | Scan everything installed, not just outdated casks |
+| `--apps-dir <path>` | Look somewhere other than `/Applications` |
+| `--fetch` | Download the incoming build and diff it |
+| `--greedy` | Include casks that normally update themselves, which only `brew upgrade --greedy` touches |
+| `--max-risk <limit>` | Mark each cask cleared or held for review against a risk limit, and exit 3 if anything is held — see [below](#upgrading-within-a-risk-limit) |
+| `--only-noteworthy` | Suppress apps with nothing to say |
+| `--min-tier <tier>` | Only report at or above a risk tier — `low`, `medium`, `high` or `critical`. Anything else exits 2 |
+| `--json` | Machine-readable output |
+
+<Note>
+  **`preview` will not upgrade anything.** It never runs `brew upgrade` — that's
+  [`privacycommand upgrade --max-risk`](#upgrading-within-a-risk-limit).
+
+  It does run `brew`, though. In cask mode — the default — every invocation
+  calls `brew outdated --json=v2`, which covers casks and formulae. Without
+  `--greedy`, a second `brew outdated --cask --greedy --json=v2` finds the casks
+  only a greedy upgrade would add, and if anything is outdated, one
+  `brew info --cask --json=v2` call resolves where each is installed. None of
+  those is timed out. `--fetch` adds `brew --cache --cask <token>` and
+  `brew fetch --cask <token>` for each cask, which download the incoming
+  artifact into Homebrew's cache; those time out after 30 seconds and 10
+  minutes. It exits 0 on success, 2 on failure — including when Homebrew isn't
+  installed — and, with `--max-risk`, 3 when something is held. Account for
+  all of that before you wire it into a shell prompt or a pre-upgrade hook.
+</Note>
+
+### The `--fetch` caveat
+
+With `--fetch`, an incoming build is analysed *before* Gatekeeper has assessed
+it. A freshly downloaded artifact can therefore show a one-off "notarization"
+difference that is an artefact of the download rather than a real change in the
+app. The output flags this where it applies — read it before drawing
+conclusions.
+
+`.dmg`, `.zip` and `.pkg` cask artifacts are understood. A `.pkg` is expanded
+with `pkgutil --expand-full` and the app inside it analysed; it is never
+installed.
+
+## Upgrading within a risk limit
+
+`privacycommand upgrade` is `preview --fetch` with one addition: give it
+`--max-risk` and it applies the upgrades that stay within that limit and holds
+the rest for you to review.
+
+```bash
+privacycommand upgrade                             # report only, like preview --fetch
+privacycommand upgrade --max-risk medium           # upgrade what's medium risk or lower
+privacycommand upgrade --max-risk 40 --dry-run     # show the plan, run nothing
+```
+
+For each outdated cask it downloads the incoming build, analyses it, and
+compares its risk with the limit — a tier (`low`, `medium`, `high`,
+`critical`) or a score from 0 to 100:
+
+- A cask **at or below** the limit is *cleared* and upgraded with
+  `brew upgrade --cask <token>`. Homebrew's auto-update is off for that step,
+  so it installs the build that was just analysed.
+- A cask **above** the limit is *held*. So is one whose incoming build couldn't
+  be downloaded or analysed.
+- On a terminal, each held cask then asks "upgrade anyway?". `--no-input`
+  leaves them held without asking, and is implied when stdin isn't a terminal
+  and with `--json`.
+
+Casks that install no app, and outdated formulae, are neither analysed nor
+upgraded. The footer lists them with the `brew` command to run yourself.
+
+| Flag | Effect |
+|---|---|
+| `--max-risk <limit>` | Upgrade casks whose incoming build is at or below the limit; hold the rest |
+| `--dry-run` | With `--max-risk`: show what would be upgraded and held, without running `brew upgrade` |
+| `--no-input` | With `--max-risk`: don't ask about held casks |
+| `--greedy` | Include casks that normally update themselves |
+| `--min-tier <tier>`, `--only-noteworthy` | As for `preview`. Not with `--max-risk`, which judges every cask |
+| `--json` | Machine-readable output; `brew`'s own output goes to stderr |
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Everything cleared and was upgraded — or, without `--max-risk`, the report ran |
+| `1` | A `brew upgrade` failed |
+| `2` | Bad arguments, or Homebrew isn't installed |
+| `3` | One or more casks are held for review |
+
+A daily alias that only stops to ask about riskier apps:
+
+```bash
+alias update='privacycommand upgrade --max-risk medium'
+```
+
+`preview` takes `--max-risk` too, without upgrading anything. It marks each cask
+cleared or held — judged on the incoming build with `--fetch`, otherwise on the
+installed one — and exits 3 if anything is held. So this runs `brew upgrade`
+only when every app clears:
+
+```bash
+privacycommand preview --fetch --max-risk medium && brew upgrade
+```

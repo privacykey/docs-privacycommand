@@ -106,25 +106,47 @@ description: "The failures people actually hit, and what to do about each."
   </Accordion>
 </AccordionGroup>
 
-## auditctl
+## Command line
 
 <AccordionGroup>
+  <Accordion title="privacycommand: command not found" icon="terminal">
+    The tool is only on your `PATH` once it's linked. A Homebrew install links
+    it for you; with the disk image, choose **privacycommand ▸ Install Command
+    Line Tool…** and, if the alert shows a `sudo` command, run it in Terminal.
+    Then open a new Terminal window, since a running shell can cache the old
+    `PATH` lookup. Releases up to 0.1.5 don't carry the tool. See
+    [Command line](/cli).
+  </Accordion>
+  <Accordion title="Install Command Line Tool… asks you to move the app" icon="folder">
+    privacycommand is running from the disk image, or from a copy macOS opened
+    in a temporary location. A link into it would break when the image is
+    ejected. Drag the app to `/Applications`, open it from there, and choose
+    the menu item again.
+  </Accordion>
+  <Accordion title="Tab completion doesn't work in zsh" icon="keyboard">
+    `compinit` has to run before the `eval "$(privacycommand completion zsh)"`
+    line in `~/.zshrc`; without it there's nothing to register with. With a
+    Homebrew install, zsh only finds Homebrew's completions if its
+    `share/zsh/site-functions` folder is on `fpath` before `compinit` runs.
+    If you add a line now and nothing changes, zsh may be using a cached
+    completion dump: delete `~/.zcompdump` and open a new terminal window.
+  </Accordion>
   <Accordion title="preview says Homebrew was not found" icon="terminal">
-    `auditctl preview` looks for `brew` at `$HOMEBREW_PREFIX/bin/brew` first, if
+    `privacycommand preview` looks for `brew` at `$HOMEBREW_PREFIX/bin/brew` first, if
     that variable is set, then `/opt/homebrew/bin/brew` and
     `/usr/local/bin/brew`. A Homebrew installed somewhere else is invisible to
     it unless you point the variable at the prefix:
 
     ```bash
-    HOMEBREW_PREFIX="$(brew --prefix)" swift run -c release auditctl preview
+    HOMEBREW_PREFIX="$(brew --prefix)" privacycommand preview
     ```
 
     Or skip brew entirely with `preview --all-apps`, which reads
     `/Applications` and `~/Applications` directly.
   </Accordion>
   <Accordion title="Colour codes in a log file or CI transcript" icon="terminal">
-    Pass `--no-color`, or set `NO_COLOR` in the environment — `auditctl` honours
-    both. See [auditctl](/auditctl).
+    Pass `--no-color`, or set `NO_COLOR` in the environment — `privacycommand`
+    honours both. See [Command line](/cli).
   </Accordion>
 </AccordionGroup>
 

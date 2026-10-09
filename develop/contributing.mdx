@@ -31,7 +31,7 @@ only says "this is bad" makes the report worse, not better.
 
 Detectors live in `Sources/privacycommandCore/Analysis/`. Keep them there, and
 keep them free of AppKit — nothing under `Analysis/` imports it today — so they
-stay testable from `swift test` and usable from [`auditctl`](/auditctl).
+stay testable from `swift test` and usable from the [CLI](/cli).
 
 Useful habits:
 
@@ -40,7 +40,7 @@ Useful habits:
 - **Make it traceable.** Every detection should be able to show what matched.
   The [telemetry callout](/telemetry) shows the matched strings behind every
   SDK, and new detectors should meet the same bar.
-- **Test against a real bundle.** `auditctl` against a system app is the fastest
+- **Test against a real bundle.** `.build/debug/privacycommand` against a system app is the fastest
   check that a detector behaves on real input.
 
 ## Docs

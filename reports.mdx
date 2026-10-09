@@ -17,13 +17,13 @@ The complete output — nothing is summarised away. This is the format to keep i
 you're building a record over time, because a future version of privacycommand
 can read an old export even if the UI has moved on.
 
-It's also what you want for scripting — but [`auditctl --json`](/auditctl) is
+It's also what you want for scripting — but [`privacycommand --json`](/cli) is
 **not** this format. The CLI emits its own flat, summarised, static-only object:
 identity and signing, risk score and tier, privacy keys, capabilities, signals
 and findings, with components reduced to four counts. No events, no bundle
 model, no fidelity notes. Its keys are emitted sorted alphabetically rather than
 grouped, so read them by name and don't rely on position. The two share no
-top-level keys, so a scheduled `auditctl --json` job and a saved GUI export
+top-level keys, so a scheduled `privacycommand --json` job and a saved GUI export
 can't be diffed against each other. Pick one and stay on it.
 
 ## HTML and PDF

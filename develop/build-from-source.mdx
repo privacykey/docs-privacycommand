@@ -47,7 +47,10 @@ Then, before the first build:
 </Steps>
 
 The app target depends on the helper, so building the app builds the helper
-first and embeds it, along with its LaunchDaemon plist.
+first and embeds it, along with its LaunchDaemon plist. An **Embed command-line
+tool** build phase also builds the `privacycommand` CLI with SwiftPM, stamps the
+app's version into it, and signs it into `Contents/Helpers/privacycommand` —
+the copy that Homebrew and **Install Command Line Tool…** link onto `PATH`.
 
 App Sandbox is off, Hardened Runtime is on, deployment target is macOS 14.0,
 and distribution is Developer ID plus notarization rather than the App Store.
@@ -58,14 +61,14 @@ and distribution is Developer ID plus notarization rather than the App Store.
 cd privacycommand
 swift build
 swift test
-.build/debug/auditctl /System/Applications/Calculator.app
+.build/debug/privacycommand /System/Applications/Calculator.app
 ```
 
-This builds `privacycommandCore` and [`auditctl`](/auditctl). **The SwiftUI app
+This builds `privacycommandCore` and the [`privacycommand` CLI](/cli). **The SwiftUI app
 is not built this way** — it exists only in the Xcode project.
 
 Use this loop when you're working on detectors. It's much faster than a GUI
-build, and `auditctl` against a known-good system app is the quickest way to
+build, and `.build/debug/privacycommand` against a known-good system app is the quickest way to
 see whether a change did what you meant.
 
 ## How one source tree compiles both ways
