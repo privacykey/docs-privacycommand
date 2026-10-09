@@ -17,8 +17,8 @@ empty.
 
 ## Every outbound call
 
-Five, all narrow. The first three happen on privacycommand's own account; the
-last two only when you ask for a feature that fetches something:
+Six, all narrow. The first three happen on privacycommand's own account; the
+last three only when you ask for a feature that fetches something:
 
 | Call | When | What is sent |
 |---|---|---|
@@ -26,10 +26,11 @@ last two only when you ask for a feature that fetches something:
 | **App Store privacy labels** | Analysing a Mac App Store app | The inspected app's bundle ID, to Apple's lookup endpoint and then that app's App Store product page. Nothing about you |
 | **Sparkle appcast** | Checking for updates — **off by default** | A request to `privacykey.github.io` |
 | **The inspected app's own appcast** | You click **Preview next version** on a Sparkle-distributed app — see [Compare runs](/compare-runs) | A request to the *vendor's* feed URL, then a download of the release it points at. HTTPS only, capped at 600 MB, analysed but never executed |
-| **`brew fetch`** | [`privacycommand preview --fetch`](/cli) | Homebrew downloads the incoming cask artifact into its own cache, from wherever the cask points |
+| **`brew fetch`** | [`privacycommand preview --fetch`](/cli) or `privacycommand upgrade` | Homebrew downloads the incoming cask artifact into its own cache, from wherever the cask points |
+| **`brew upgrade`** | [`privacycommand upgrade --max-risk`](/cli#upgrading-within-a-risk-limit), for the casks that clear the limit | Homebrew installs the new version, as if you had run `brew upgrade --cask` yourself. Its auto-update is off for that step, so it installs the build that was just analysed |
 
 **All analysis runs locally.** The inspected bundle's contents never leave your
-machine, and privacycommand never uploads a report anywhere. The last two rows
+machine, and privacycommand never uploads a report anywhere. The last three rows
 are downloads *into* your machine, not uploads out of it.
 
 ## The privileged helper

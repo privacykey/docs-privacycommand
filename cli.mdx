@@ -76,8 +76,8 @@ swift build -c release
 ## Tab completion
 
 `privacycommand` completes its subcommands and options, installed app names,
-risk tiers, and the outdated casks `preview` would look at, in zsh, bash and
-fish.
+risk tiers, and the outdated casks `preview` and `upgrade` would look at, in
+zsh, bash and fish.
 
 A Homebrew install sets this up for you. If completion already works for other
 Homebrew commands in your shell, it works for this one too.
@@ -114,6 +114,7 @@ privacycommand <target>              static audit of one app (name or path)
 privacycommand audit <target>        same, explicit
 privacycommand -i, interactive       force the interactive browser
 privacycommand preview [options]     preview apps before you update them
+privacycommand upgrade [options]     show what brew upgrade would change, or gate it by risk
 privacycommand completion <shell>    print a tab-completion script (zsh, bash, fish)
 ```
 
@@ -179,28 +180,37 @@ it:
 privacycommand preview --fetch firefox
 ```
 
+After the apps, it lists what it couldn't analyse: casks that install no app
+(command-line tools, fonts and the like) with the reason, and your outdated
+formulae, so you can see everything `brew upgrade` would touch. Without
+`--greedy` it also names the casks only `brew upgrade --greedy` would update.
+
 | Flag | Effect |
 |---|---|
 | `--all-apps` | Scan everything installed, not just outdated casks |
 | `--apps-dir <path>` | Look somewhere other than `/Applications` |
 | `--fetch` | Download the incoming build and diff it |
+| `--greedy` | Include casks that normally update themselves, which only `brew upgrade --greedy` touches |
+| `--max-risk <limit>` | Mark each cask cleared or held for review against a risk limit, and exit 3 if anything is held — see [below](#upgrading-within-a-risk-limit) |
 | `--only-noteworthy` | Suppress apps with nothing to say |
 | `--min-tier <tier>` | Only report at or above a risk tier — `low`, `medium`, `high` or `critical`. Anything else exits 2 |
 | `--json` | Machine-readable output |
 
 <Note>
-  **`preview` will not upgrade anything.** It never runs `brew upgrade` and
-  never blocks or delays an update — it will not get between you and your
-  package manager.
+  **`preview` will not upgrade anything.** It never runs `brew upgrade` — that's
+  [`privacycommand upgrade --max-risk`](#upgrading-within-a-risk-limit).
 
   It does run `brew`, though. In cask mode — the default — every invocation
-  shells out to `brew outdated --cask --json=v2`; only if that comes back with
-  something outdated does a second call to `brew info --cask --json=v2` follow,
-  so on an up-to-date machine you pay for `outdated` alone. Neither call is
-  timed out. `--fetch` adds `brew fetch --cask <token>`, which downloads the
-  incoming artifact into Homebrew's cache. And it exits 0 on success but 2 on
-  failure, including when Homebrew isn't installed at all. Account for both
-  before you wire it into a shell prompt or a pre-upgrade hook.
+  calls `brew outdated --json=v2`, which covers casks and formulae. Without
+  `--greedy`, a second `brew outdated --cask --greedy --json=v2` finds the casks
+  only a greedy upgrade would add, and if anything is outdated, one
+  `brew info --cask --json=v2` call resolves where each is installed. None of
+  those is timed out. `--fetch` adds `brew --cache --cask <token>` and
+  `brew fetch --cask <token>` for each cask, which download the incoming
+  artifact into Homebrew's cache; those time out after 30 seconds and 10
+  minutes. It exits 0 on success, 2 on failure — including when Homebrew isn't
+  installed — and, with `--max-risk`, 3 when something is held. Account for
+  all of that before you wire it into a shell prompt or a pre-upgrade hook.
 </Note>
 
 ### The `--fetch` caveat
@@ -211,4 +221,65 @@ difference that is an artefact of the download rather than a real change in the
 app. The output flags this where it applies — read it before drawing
 conclusions.
 
-`.dmg` and `.zip` cask artifacts are understood. `.pkg` is skipped.
+`.dmg`, `.zip` and `.pkg` cask artifacts are understood. A `.pkg` is expanded
+with `pkgutil --expand-full` and the app inside it analysed; it is never
+installed.
+
+## Upgrading within a risk limit
+
+`privacycommand upgrade` is `preview --fetch` with one addition: give it
+`--max-risk` and it applies the upgrades that stay within that limit and holds
+the rest for you to review.
+
+```bash
+privacycommand upgrade                             # report only, like preview --fetch
+privacycommand upgrade --max-risk medium           # upgrade what's medium risk or lower
+privacycommand upgrade --max-risk 40 --dry-run     # show the plan, run nothing
+```
+
+For each outdated cask it downloads the incoming build, analyses it, and
+compares its risk with the limit — a tier (`low`, `medium`, `high`,
+`critical`) or a score from 0 to 100:
+
+- A cask **at or below** the limit is *cleared* and upgraded with
+  `brew upgrade --cask <token>`. Homebrew's auto-update is off for that step,
+  so it installs the build that was just analysed.
+- A cask **above** the limit is *held*. So is one whose incoming build couldn't
+  be downloaded or analysed.
+- On a terminal, each held cask then asks "upgrade anyway?". `--no-input`
+  leaves them held without asking, and is implied when stdin isn't a terminal
+  and with `--json`.
+
+Casks that install no app, and outdated formulae, are neither analysed nor
+upgraded. The footer lists them with the `brew` command to run yourself.
+
+| Flag | Effect |
+|---|---|
+| `--max-risk <limit>` | Upgrade casks whose incoming build is at or below the limit; hold the rest |
+| `--dry-run` | With `--max-risk`: show what would be upgraded and held, without running `brew upgrade` |
+| `--no-input` | With `--max-risk`: don't ask about held casks |
+| `--greedy` | Include casks that normally update themselves |
+| `--min-tier <tier>`, `--only-noteworthy` | As for `preview`. Not with `--max-risk`, which judges every cask |
+| `--json` | Machine-readable output; `brew`'s own output goes to stderr |
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Everything cleared and was upgraded — or, without `--max-risk`, the report ran |
+| `1` | A `brew upgrade` failed |
+| `2` | Bad arguments, or Homebrew isn't installed |
+| `3` | One or more casks are held for review |
+
+A daily alias that only stops to ask about riskier apps:
+
+```bash
+alias update='privacycommand upgrade --max-risk medium'
+```
+
+`preview` takes `--max-risk` too, without upgrading anything. It marks each cask
+cleared or held — judged on the incoming build with `--fetch`, otherwise on the
+installed one — and exits 3 if anything is held. So this runs `brew upgrade`
+only when every app clears:
+
+```bash
+privacycommand preview --fetch --max-risk medium && brew upgrade
+```

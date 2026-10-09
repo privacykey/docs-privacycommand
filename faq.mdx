@@ -62,7 +62,8 @@ description: "Short answers to the questions that come up first."
   </Accordion>
   <Accordion title="Can I run it in CI?" icon="terminal">
     Yes, via the [`privacycommand` command-line tool](/cli). Use `--json` for machine-readable output
-    and `--warn-exit` to fail a build on findings. Run bare with stdout
+    and `--warn-exit` to fail a build on findings. `--max-risk` on `preview` or
+    `upgrade` exits 3 when a Homebrew update is riskier than you allow. Run bare with stdout
     redirected it prints usage rather than opening the interactive browser, so
     it's safe in a pipeline.
   </Accordion>
