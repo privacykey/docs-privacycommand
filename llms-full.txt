@@ -1222,6 +1222,12 @@ it:
 privacycommand preview --fetch firefox
 ```
 
+On a terminal, `preview` draws a live progress board on stderr while it
+works: one row per app with the analysis step it's on — with `--fetch`, how
+many MB of the download have arrived — and then its result as it finishes.
+The board clears before the report prints. It only appears when stderr is a
+terminal, so piped output and `--json` are unchanged.
+
 After the apps, it lists what it couldn't analyse: casks that install no app
 (command-line tools, fonts and the like) with the reason, and your outdated
 formulae, so you can see everything `brew upgrade` would touch. Without
@@ -1236,6 +1242,7 @@ formulae, so you can see everything `brew upgrade` would touch. Without
 | `--max-risk <limit>` | Mark each cask cleared or held for review against a risk limit, and exit 3 if anything is held — see [below](#upgrading-within-a-risk-limit) |
 | `--only-noteworthy` | Suppress apps with nothing to say |
 | `--min-tier <tier>` | Only report at or above a risk tier — `low`, `medium`, `high` or `critical`. Anything else exits 2 |
+| `--no-color` | Plain output. Setting `NO_COLOR` in the environment does the same |
 | `--json` | Machine-readable output |
 
 > **Note**
@@ -1292,6 +1299,9 @@ compares its risk with the limit — a tier (`low`, `medium`, `high`,
   leaves them held without asking, and is implied when stdin isn't a terminal
   and with `--json`.
 
+On a terminal it shows the same live progress board as `preview --fetch`: each
+cask's download in MB, then its analysis, then its result.
+
 Casks that install no app, and outdated formulae, are neither analysed nor
 upgraded. The footer lists them with the `brew` command to run yourself.
 
@@ -1302,6 +1312,7 @@ upgraded. The footer lists them with the `brew` command to run yourself.
 | `--no-input` | With `--max-risk`: don't ask about held casks |
 | `--greedy` | Include casks that normally update themselves |
 | `--min-tier <tier>`, `--only-noteworthy` | As for `preview`. Not with `--max-risk`, which judges every cask |
+| `--no-color` | Plain output. Setting `NO_COLOR` in the environment does the same |
 | `--json` | Machine-readable output; `brew`'s own output goes to stderr |
 
 | Exit code | Meaning |
